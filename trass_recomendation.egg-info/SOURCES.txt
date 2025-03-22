@@ -1,0 +1,11 @@
+setup.py
+src/__init__.py
+src/main.py
+src/trail_data.py
+src/ui/__init__.py
+src/ui/desktop.py
+trass_recomendation.egg-info/PKG-INFO
+trass_recomendation.egg-info/SOURCES.txt
+trass_recomendation.egg-info/dependency_links.txt
+trass_recomendation.egg-info/requires.txt
+trass_recomendation.egg-info/top_level.txt

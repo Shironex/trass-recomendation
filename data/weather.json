@@ -1,0 +1,152 @@
+[
+  {
+    "date": "2023-07-01",
+    "location_id": "Tatry",
+    "avg_temp": 22.5,
+    "min_temp": 15.2,
+    "max_temp": 26.8,
+    "precipitation": 0.0,
+    "sunshine_hours": 12.5,
+    "cloud_cover": 10
+  },
+  {
+    "date": "2023-07-02",
+    "location_id": "Tatry",
+    "avg_temp": 24.1,
+    "min_temp": 16.5,
+    "max_temp": 28.3,
+    "precipitation": 2.5,
+    "sunshine_hours": 8.2,
+    "cloud_cover": 45
+  },
+  {
+    "date": "2023-07-03",
+    "location_id": "Tatry",
+    "avg_temp": 20.8,
+    "min_temp": 14.1,
+    "max_temp": 25.6,
+    "precipitation": 15.3,
+    "sunshine_hours": 3.1,
+    "cloud_cover": 80
+  },
+  {
+    "date": "2023-07-01",
+    "location_id": "Bieszczady",
+    "avg_temp": 23.7,
+    "min_temp": 16.8,
+    "max_temp": 29.1,
+    "precipitation": 0.0,
+    "sunshine_hours": 13.2,
+    "cloud_cover": 5
+  },
+  {
+    "date": "2023-07-02",
+    "location_id": "Bieszczady",
+    "avg_temp": 25.3,
+    "min_temp": 17.2,
+    "max_temp": 30.5,
+    "precipitation": 1.2,
+    "sunshine_hours": 10.5,
+    "cloud_cover": 25
+  },
+  {
+    "date": "2023-07-03",
+    "location_id": "Bieszczady",
+    "avg_temp": 21.5,
+    "min_temp": 15.3,
+    "max_temp": 26.8,
+    "precipitation": 8.7,
+    "sunshine_hours": 4.8,
+    "cloud_cover": 70
+  },
+  {
+    "date": "2023-07-01",
+    "location_id": "Jura Krakowsko-Częstochowska",
+    "avg_temp": 24.2,
+    "min_temp": 17.1,
+    "max_temp": 29.3,
+    "precipitation": 0.0,
+    "sunshine_hours": 13.8,
+    "cloud_cover": 0
+  },
+  {
+    "date": "2023-07-02",
+    "location_id": "Jura Krakowsko-Częstochowska",
+    "avg_temp": 26.1,
+    "min_temp": 18.3,
+    "max_temp": 31.2,
+    "precipitation": 0.5,
+    "sunshine_hours": 11.2,
+    "cloud_cover": 15
+  },
+  {
+    "date": "2023-07-03",
+    "location_id": "Jura Krakowsko-Częstochowska",
+    "avg_temp": 22.7,
+    "min_temp": 16.2,
+    "max_temp": 27.9,
+    "precipitation": 5.8,
+    "sunshine_hours": 6.5,
+    "cloud_cover": 50
+  },
+  {
+    "date": "2023-07-01",
+    "location_id": "Puszcza Białowieska",
+    "avg_temp": 23.8,
+    "min_temp": 16.5,
+    "max_temp": 28.9,
+    "precipitation": 0.0,
+    "sunshine_hours": 13.5,
+    "cloud_cover": 5
+  },
+  {
+    "date": "2023-07-02",
+    "location_id": "Puszcza Białowieska",
+    "avg_temp": 25.5,
+    "min_temp": 17.8,
+    "max_temp": 30.7,
+    "precipitation": 1.5,
+    "sunshine_hours": 10.8,
+    "cloud_cover": 20
+  },
+  {
+    "date": "2023-07-03",
+    "location_id": "Puszcza Białowieska",
+    "avg_temp": 21.9,
+    "min_temp": 15.7,
+    "max_temp": 27.2,
+    "precipitation": 7.2,
+    "sunshine_hours": 5.2,
+    "cloud_cover": 65
+  },
+  {
+    "date": "2023-07-01",
+    "location_id": "Sudety",
+    "avg_temp": 21.3,
+    "min_temp": 14.5,
+    "max_temp": 25.6,
+    "precipitation": 0.0,
+    "sunshine_hours": 12.8,
+    "cloud_cover": 10
+  },
+  {
+    "date": "2023-07-02",
+    "location_id": "Sudety",
+    "avg_temp": 23.2,
+    "min_temp": 15.8,
+    "max_temp": 27.9,
+    "precipitation": 1.8,
+    "sunshine_hours": 9.5,
+    "cloud_cover": 35
+  },
+  {
+    "date": "2023-07-03",
+    "location_id": "Sudety",
+    "avg_temp": 19.8,
+    "min_temp": 13.2,
+    "max_temp": 24.5,
+    "precipitation": 12.5,
+    "sunshine_hours": 3.5,
+    "cloud_cover": 85
+  }
+] 
