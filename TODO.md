@@ -1,7 +1,7 @@
 # Plan implementacji Rekomendatora tras turystycznych
 
 ## 1. Struktura projektu
-- [ ] Utworzenie podstawowej struktury katalogów:
+- [x] Utworzenie podstawowej struktury katalogów:
   - `data/` - katalog na pliki z danymi
   - `src/` - katalog na kod źródłowy
   - `tests/` - katalog na testy
@@ -38,8 +38,8 @@
 - [ ] Implementacja funkcji lambda do operacji na danych
 
 ### 2.4 Moduł interfejsu użytkownika (`src/ui.py`)
-- [ ] Implementacja prostego interfejsu konsolowego
-- [ ] Funkcje do wyświetlania menu
+- [x] Implementacja prostego interfejsu konsolowego
+- [x] Funkcje do wyświetlania menu
 - [ ] Funkcje do pobierania danych od użytkownika
 
 ## 3. Testy
