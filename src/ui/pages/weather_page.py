@@ -15,6 +15,7 @@ from src.ui.components import (
     StyledDateEdit, CardFrame, StyledDoubleSpinBox, DataTable
 )
 from src.core.weather_data import WeatherData
+from src.utils import logger
 
 
 class WeatherPage(QWidget):
@@ -25,6 +26,7 @@ class WeatherPage(QWidget):
         super().__init__(parent)
         self.main_window = parent
         self.weather_data = WeatherData()
+        logger.debug("Inicjalizacja strony zarządzania danymi pogodowymi")
         self._setup_ui()
         self._connect_signals()
     
@@ -245,6 +247,10 @@ class WeatherPage(QWidget):
         
         right_column.addWidget(self.weather_table)
         
+        # Status label pod tabelą
+        self.status_label = StyledLabel("")
+        right_column.addWidget(self.status_label)
+        
         # Dodanie kolumn do głównego układu
         content_layout.addLayout(left_column, 1)
         content_layout.addLayout(right_column, 2)
@@ -284,35 +290,36 @@ class WeatherPage(QWidget):
             else:
                 self.weather_data.load_from_json(filepath)
             
-            # Aktualizacja filtrów
+            # Aktualizacja kontrolek filtrów
             self._update_filters()
             
             # Aktualizacja tabeli
             self._update_table()
             
-            # Aktualizacja statystyk
-            self._update_statistics()
-            
+            logger.info(f"Dane pogodowe wczytane pomyślnie z pliku {filepath}")
             QMessageBox.information(self, "Sukces", "Dane zostały wczytane pomyślnie!")
         except Exception as e:
+            logger.error(f"Błąd wczytywania danych pogodowych: {str(e)}")
             QMessageBox.critical(self, "Błąd", f"Nie udało się wczytać danych: {str(e)}")
     
     def _update_filters(self):
-        """Aktualizuje filtry na podstawie wczytanych danych."""
-        # Aktualizacja lokalizacji
+        """Aktualizuje kontrolki filtrów na podstawie wczytanych danych."""
+        if not self.weather_data.records:
+            return
+        
+        # Aktualizacja listy lokalizacji
         self.location.clear()
         self.location.addItem("Wszystkie")
-        for loc in self.weather_data.get_locations():
-            self.location.addItem(loc)
+        for location in self.weather_data.get_locations():
+            self.location.addItem(location)
         
-        # Aktualizacja zakresu dat
-        min_date, max_date = self.weather_data.get_date_range()
-        self.start_date.setDate(min_date)
-        self.end_date.setDate(max_date)
+        logger.debug(f"Zaktualizowano filtry pogodowe, dodano {self.location.count() - 1} lokalizacji")
     
-    def _update_table(self):
-        """Aktualizuje tabelę z danymi pogodowymi."""
-        records = self.weather_data.filtered_records
+    def _update_table(self, records=None):
+        """Aktualizuje tabelę danych pogodowych."""
+        if records is None:
+            records = self.weather_data.filtered_records
+        
         self.weather_table.setRowCount(len(records))
         
         for i, record in enumerate(records):
@@ -379,40 +386,43 @@ class WeatherPage(QWidget):
             self.sunny_days.setText("0")
     
     def apply_filters(self):
-        """Stosuje filtry do danych pogodowych."""
+        """Stosuje wybrane filtry do danych pogodowych."""
         if not self.weather_data.records:
+            logger.warn("Próba filtrowania pustych danych pogodowych")
             QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do filtrowania!")
             return
         
-        # Resetowanie filtrów
-        self.weather_data.filtered_records = self.weather_data.records.copy()
+        # Pobranie wartości filtrów
+        filters = {}
         
-        # Filtrowanie po lokalizacji
-        location_text = self.location.currentText()
-        if location_text != "Wszystkie":
-            self.weather_data.filter_by_location(location_text)
+        # Lokalizacja
+        if self.location.currentText() != "Wszystkie":
+            filters['location'] = self.location.currentText()
         
-        # Filtrowanie po zakresie dat
+        # Zakres dat
         start_date = self.start_date.date().toPyDate()
         end_date = self.end_date.date().toPyDate()
+        
         if start_date and end_date:
-            self.weather_data.filter_by_date_range(start_date, end_date)
+            if start_date > end_date:
+                logger.warn("Niepoprawny zakres dat w filtrach pogodowych")
+                QMessageBox.warning(self, "Ostrzeżenie", "Data początkowa nie może być późniejsza niż data końcowa!")
+                return
+            
+            filters['date_range'] = (start_date, end_date)
         
-        # Filtrowanie według preferencji pogodowych
-        self.weather_data.filtered_records = self._filter_by_preferences(self.weather_data.filtered_records)
+        logger.debug(f"Zastosowano filtry pogodowe: {filters}")
         
-        # Aktualizacja tabeli
-        self._update_table()
+        # Filtrowanie danych i aktualizacja tabeli
+        filtered_records = self.weather_data.filter_records(**filters)
+        self._update_table(filtered_records)
         
-        # Aktualizacja statystyk
-        self._update_statistics()
+        status_msg = f"Wyświetlanie {len(filtered_records)} z {len(self.weather_data.records)} rekordów"
+        self.status_label.setText(status_msg)
+        logger.info(status_msg)
     
     def export_to_csv(self):
-        """Eksportuje dane do pliku CSV."""
-        if not self.weather_data.filtered_records:
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
-            return
-        
+        """Eksportuje dane pogodowe do pliku CSV."""
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             "Eksportuj do CSV",
@@ -425,16 +435,14 @@ class WeatherPage(QWidget):
         
         try:
             self.weather_data.save_to_csv(filepath)
-            QMessageBox.information(self, "Sukces", "Dane zostały zapisane pomyślnie!")
+            logger.info(f"Dane pogodowe wyeksportowane do pliku CSV: {filepath}")
+            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
         except Exception as e:
-            QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}")
+            logger.error(f"Błąd eksportu do CSV: {str(e)}")
+            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
     
     def export_to_json(self):
-        """Eksportuje dane do pliku JSON."""
-        if not self.weather_data.filtered_records:
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
-            return
-        
+        """Eksportuje dane pogodowe do pliku JSON."""
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             "Eksportuj do JSON",
@@ -447,9 +455,11 @@ class WeatherPage(QWidget):
         
         try:
             self.weather_data.save_to_json(filepath)
-            QMessageBox.information(self, "Sukces", "Dane zostały zapisane pomyślnie!")
+            logger.info(f"Dane pogodowe wyeksportowane do pliku JSON: {filepath}")
+            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
         except Exception as e:
-            QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}")
+            logger.error(f"Błąd eksportu do JSON: {str(e)}")
+            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
     
     def resizeEvent(self, event):
         """Obsługa zmiany rozmiaru okna."""

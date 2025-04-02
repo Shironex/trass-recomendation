@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from functools import reduce
 from src.core.trail_data import TrailData, TrailRecord
 from src.core.weather_data import WeatherData, WeatherRecord
+from src.utils import logger
 
 
 class RouteRecommender:
@@ -36,30 +37,30 @@ class RouteRecommender:
         Returns:
             list: Lista przefiltrowanych tras
         """
-        print(f"DEBUG: [filter_trails_by_params] Filtruję trasy z parametrami: {params}")
+        logger.debug(f"[filter_trails_by_params] Filtruję trasy z parametrami: {params}")
         filtered_trails = self.trail_data.trails
         
         # Filtrowanie według długości minimalnej
         if 'min_length' in params:
             filtered_trails = [t for t in filtered_trails if t.length_km >= params['min_length']]
-            print(f"DEBUG: [filter_trails_by_params] Po filtracji min_length: {len(filtered_trails)} tras")
+            logger.debug(f"[filter_trails_by_params] Po filtracji min_length: {len(filtered_trails)} tras")
         
         # Filtrowanie według długości maksymalnej
         if 'max_length' in params:
             filtered_trails = [t for t in filtered_trails if t.length_km <= params['max_length']]
-            print(f"DEBUG: [filter_trails_by_params] Po filtracji max_length: {len(filtered_trails)} tras")
+            logger.debug(f"[filter_trails_by_params] Po filtracji max_length: {len(filtered_trails)} tras")
         
         # Filtrowanie według trudności
         if 'difficulty' in params:
             filtered_trails = [t for t in filtered_trails if t.difficulty == params['difficulty']]
-            print(f"DEBUG: [filter_trails_by_params] Po filtracji difficulty: {len(filtered_trails)} tras")
+            logger.debug(f"[filter_trails_by_params] Po filtracji difficulty: {len(filtered_trails)} tras")
         
         # Filtrowanie według regionu
         if 'region' in params:
             filtered_trails = [t for t in filtered_trails if t.region == params['region']]
-            print(f"DEBUG: [filter_trails_by_params] Po filtracji region: {len(filtered_trails)} tras")
+            logger.debug(f"[filter_trails_by_params] Po filtracji region: {len(filtered_trails)} tras")
         
-        print(f"DEBUG: [filter_trails_by_params] Wynik filtracji: {len(filtered_trails)} tras")
+        logger.debug(f"[filter_trails_by_params] Wynik filtracji: {len(filtered_trails)} tras")
         return filtered_trails
     
     def _calculate_weather_score(self, 
@@ -83,13 +84,13 @@ class RouteRecommender:
         Returns:
             Ocena pogody (0-100).
         """
-        print(f"DEBUG: [_calculate_weather_score] Obliczanie oceny pogody dla lokalizacji: {location}")
+        logger.debug(f"[_calculate_weather_score] Obliczanie oceny pogody dla lokalizacji: {location}")
         start_date, end_date = date_range
         
         try:
             # Pobieranie statystyk pogodowych
             stats = self.weather_data.calculate_statistics(location, start_date, end_date)
-            print(f"DEBUG: [_calculate_weather_score] Statystyki pogodowe: {stats}")
+            logger.debug(f"[_calculate_weather_score] Statystyki pogodowe: {stats}")
             
             # Ocena temperatury (0-40 punktów)
             avg_temp = stats['avg_temperature']
@@ -100,31 +101,31 @@ class RouteRecommender:
                 # Im dalej od preferowanego zakresu, tym mniejsza ocena
                 distance = min(abs(avg_temp - min_temp), abs(avg_temp - max_temp))
                 temp_score = max(0, 40 - (distance * 4))
-            print(f"DEBUG: [_calculate_weather_score] Ocena temperatury: {temp_score:.2f}")
+            logger.debug(f"[_calculate_weather_score] Ocena temperatury: {temp_score:.2f}")
             
             # Ocena opadów (0-30 punktów)
             precipitation = stats['total_precipitation']
             precip_score = 0
             if precipitation <= max_precipitation:
                 precip_score = 30 * (1 - precipitation / max_precipitation)
-            print(f"DEBUG: [_calculate_weather_score] Ocena opadów: {precip_score:.2f}")
+            logger.debug(f"[_calculate_weather_score] Ocena opadów: {precip_score:.2f}")
             
             # Ocena nasłonecznienia (0-30 punktów)
             sunny_days = stats['sunny_days_count']
             total_days = (end_date - start_date).days + 1
             sunny_ratio = sunny_days / total_days if total_days > 0 else 0
             sunshine_score = 30 * sunny_ratio
-            print(f"DEBUG: [_calculate_weather_score] Ocena nasłonecznienia: {sunshine_score:.2f}")
+            logger.debug(f"[_calculate_weather_score] Ocena nasłonecznienia: {sunshine_score:.2f}")
             
             # Łączna ocena
             total_score = temp_score + precip_score + sunshine_score
-            print(f"DEBUG: [_calculate_weather_score] Łączna ocena pogody: {total_score:.2f}")
+            logger.debug(f"[_calculate_weather_score] Łączna ocena pogody: {total_score:.2f}")
             return total_score
             
         except Exception as e:
             import traceback
-            print(f"BŁĄD: [_calculate_weather_score] Obliczanie oceny pogody nie powiodło się: {str(e)}")
-            print(f"BŁĄD: [_calculate_weather_score] Szczegóły błędu: {traceback.format_exc()}")
+            logger.error(f"[_calculate_weather_score] Obliczanie oceny pogody nie powiodło się: {str(e)}")
+            logger.debug(f"[_calculate_weather_score] Szczegóły błędu: {traceback.format_exc()}")
             # Zwracamy niską ocenę w przypadku błędu, aby nie eliminować trasy
             return 0.0
     
@@ -147,30 +148,31 @@ class RouteRecommender:
         Returns:
             Lista rekomendowanych tras z oceną.
         """
-        print("DEBUG: [recommend_routes] Rozpoczęcie generowania rekomendacji")
+        logger.info("--- ROZPOCZĘCIE GENEROWANIA REKOMENDACJI ---")
+        logger.debug("[recommend_routes] Rozpoczęcie generowania rekomendacji")
         
         # Sprawdzenie poprawności danych wejściowych
         if not self.trail_data.trails or not self.weather_data.records:
-            print("DEBUG: [recommend_routes] Brak danych wejściowych")
+            logger.debug("[recommend_routes] Brak danych wejściowych")
             return []
         
         try:
             # Filtrowanie tras według podanych parametrów
-            print(f"DEBUG: [recommend_routes] Filtrowanie tras: {trail_params}")
+            logger.debug(f"[recommend_routes] Filtrowanie tras: {trail_params}")
             filtered_trails = self.filter_trails_by_params(**trail_params)
-            print(f"DEBUG: [recommend_routes] Znaleziono {len(filtered_trails)} tras po filtrowaniu")
+            logger.debug(f"[recommend_routes] Znaleziono {len(filtered_trails)} tras po filtrowaniu")
             
             if not filtered_trails:
-                print("DEBUG: [recommend_routes] Brak tras po filtrowaniu")
+                logger.debug("[recommend_routes] Brak tras po filtrowaniu")
                 return []
             
             # Obliczanie ocen dla każdej trasy
             scored_trails = []
-            print(f"DEBUG: [recommend_routes] Rozpoczęcie oceniania {len(filtered_trails)} tras")
+            logger.debug(f"[recommend_routes] Rozpoczęcie oceniania {len(filtered_trails)} tras")
             
             for i, trail in enumerate(filtered_trails):
                 try:
-                    print(f"DEBUG: [recommend_routes] Ocenianie trasy #{i+1}: {trail.name} (region: {trail.region})")
+                    logger.debug(f"[recommend_routes] Ocenianie trasy #{i+1}: {trail.name} (region: {trail.region})")
                     # Obliczanie oceny pogody dla regionu trasy
                     weather_score = self._calculate_weather_score(
                         trail.region,
@@ -183,30 +185,30 @@ class RouteRecommender:
                         'weather_score': weather_score,
                         'total_score': weather_score  # Można rozbudować o inne czynniki
                     })
-                    print(f"DEBUG: [recommend_routes] Trasa {trail.name} oceniona na {weather_score:.2f}")
+                    logger.debug(f"[recommend_routes] Trasa {trail.name} oceniona na {weather_score:.2f}")
                 except Exception as e:
                     # Jeśli obliczenie oceny dla jednej trasy się nie powiedzie, 
                     # kontynuujemy dla pozostałych
-                    print(f"BŁĄD: [recommend_routes] Problem z oceną trasy {trail.name}: {str(e)}")
+                    logger.error(f"[recommend_routes] Problem z oceną trasy {trail.name}: {str(e)}")
                     continue
             
             if not scored_trails:
-                print("DEBUG: [recommend_routes] Brak tras po ocenie")
+                logger.debug("[recommend_routes] Brak tras po ocenie")
                 return []
             
             # Sortowanie tras według oceny (malejąco)
-            print("DEBUG: [recommend_routes] Sortowanie tras według oceny")
+            logger.debug("[recommend_routes] Sortowanie tras według oceny")
             scored_trails.sort(key=lambda x: x['total_score'], reverse=True)
             
             # Ograniczenie do żądanej liczby rezultatów
             top_trails = scored_trails[:limit] if limit > 0 else scored_trails
-            print(f"DEBUG: [recommend_routes] Wybrano {len(top_trails)} najlepszych tras")
+            logger.debug(f"[recommend_routes] Wybrano {len(top_trails)} najlepszych tras")
             
             # Przygotowanie wyników
             results = []
             for i, trail in enumerate(top_trails):
                 try:
-                    print(f"DEBUG: [recommend_routes] Przygotowanie danych dla trasy #{i+1}: {trail['trail'].name}")
+                    logger.debug(f"[recommend_routes] Przygotowanie danych dla trasy #{i+1}: {trail['trail'].name}")
                     results.append({
                         'id': trail['trail'].id,
                         'name': trail['trail'].name,
@@ -221,17 +223,17 @@ class RouteRecommender:
                 except Exception as e:
                     # Jeśli przygotowanie jednego wyniku się nie powiedzie,
                     # kontynuujemy dla pozostałych
-                    print(f"BŁĄD: [recommend_routes] Problem z przygotowaniem danych trasy: {str(e)}")
+                    logger.error(f"[recommend_routes] Problem z przygotowaniem danych trasy: {str(e)}")
                     continue
             
-            print(f"DEBUG: [recommend_routes] Zakończenie generowania rekomendacji, znaleziono {len(results)} tras")
+            logger.debug(f"[recommend_routes] Zakończenie generowania rekomendacji, znaleziono {len(results)} tras")
             return results
             
         except Exception as e:
             # Logowanie błędu dla debugowania
             import traceback
-            print(f"BŁĄD: [recommend_routes] Generowanie rekomendacji nie powiodło się: {str(e)}")
-            print(f"BŁĄD: [recommend_routes] Szczegóły błędu: {traceback.format_exc()}")
+            logger.error(f"[recommend_routes] Generowanie rekomendacji nie powiodło się: {str(e)}")
+            logger.debug(f"[recommend_routes] Szczegóły błędu: {traceback.format_exc()}")
             return []
     
     def generate_weekly_recommendation(self, 
@@ -249,24 +251,35 @@ class RouteRecommender:
         Returns:
             Słownik, gdzie kluczem jest data, a wartością lista rekomendacji.
         """
+        # Ustawienie daty początkowej
         if start_date is None:
             start_date = date.today()
+            
+        logger.debug(f"[generate_weekly_recommendation] Generowanie rekomendacji na tydzień od {start_date}")
         
+        # Słownik na wyniki
         recommendations = {}
         
         # Generowanie rekomendacji na każdy dzień tygodnia
-        for i in range(7):
-            current_date = start_date + timedelta(days=i)
+        for day_offset in range(7):
+            current_date = start_date + timedelta(days=day_offset)
+            logger.debug(f"[generate_weekly_recommendation] Generowanie rekomendacji na {current_date}")
             
-            # Rekomendacje na dany dzień
+            # Ustawienie daty końcowej jako bieżący dzień (rekomendacje na 1 dzień)
+            end_date = current_date
+            
+            # Generowanie rekomendacji na dany dzień
             daily_recommendations = self.recommend_routes(
-                weather_preferences,
-                trail_params,
-                current_date,
-                current_date,
-                limit=3  # Mniej rekomendacji na dzień
+                weather_preferences=weather_preferences,
+                trail_params=trail_params,
+                start_date=current_date,
+                end_date=end_date,
+                limit=3  # Ograniczamy do 3 rekomendacji na dzień
             )
             
+            # Zapisanie rekomendacji dla danego dnia
             recommendations[current_date] = daily_recommendations
-        
+            logger.debug(f"[generate_weekly_recommendation] Znaleziono {len(daily_recommendations)} tras na {current_date}")
+            
+        logger.debug("[generate_weekly_recommendation] Zakończenie generowania rekomendacji tygodniowych")
         return recommendations

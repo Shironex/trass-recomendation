@@ -10,6 +10,7 @@ sys.path.append('.')
 from src.ui.components import (
     StyledLabel, PrimaryButton, CardFrame
 )
+from src.utils import logger
 
 
 class HomePage(QWidget):
@@ -19,6 +20,7 @@ class HomePage(QWidget):
         """Inicjalizacja strony głównej."""
         super().__init__(parent)
         self.main_window = parent
+        logger.debug("Inicjalizacja strony głównej")
         self._setup_ui()
     
     def _setup_ui(self):
@@ -65,56 +67,57 @@ class HomePage(QWidget):
         # Karta rekomendacji
         recommendation_card = self._create_card(
             "Rekomendacje Tras",
-            "Otrzymaj rekomendacje tras na podstawie preferencji pogodowych.",
+            "Uzyskaj rekomendacje tras dopasowanych do Twoich preferencji.",
             "show_recommendation_page"
         )
         cards_layout.addWidget(recommendation_card, 1, 0, 1, 2)
         
         layout.addLayout(cards_layout)
-        layout.addStretch()
+        layout.addStretch(1)
+        
+        logger.debug("Interfejs strony głównej skonfigurowany")
     
     def _create_card(self, title, description, action):
         """
-        Tworzy kartę z tytułem, opisem i przyciskiem.
+        Tworzy kartę z akcją.
         
         Args:
-            title: Tytuł karty.
-            description: Opis karty.
-            action: Nazwa metody do wywołania po kliknięciu przycisku.
+            title (str): Tytuł karty
+            description (str): Opis akcji
+            action (str): Nazwa metody do wywołania po kliknięciu
             
         Returns:
-            Obiekt CardFrame z zawartością.
+            CardFrame: Karta z przyciskiem akcji
         """
         card = CardFrame()
         card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(15, 15, 15, 15)
+        card_layout.setSpacing(15)
         
         # Tytuł karty
-        card_title = StyledLabel(title)
-        font = card_title.font()
-        font.setPointSize(14)
+        title_label = StyledLabel(title)
+        font = title_label.font()
         font.setBold(True)
-        card_title.setFont(font)
-        card_layout.addWidget(card_title)
+        font.setPointSize(12)
+        title_label.setFont(font)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title_label)
         
-        # Opis karty
-        card_description = StyledLabel(description)
-        card_description.setWordWrap(True)
-        card_layout.addWidget(card_description)
+        # Opis
+        desc_label = StyledLabel(description)
+        desc_label.setWordWrap(True)
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(desc_label)
         
-        # Przycisk karty
-        button_text = "Przejdź"
-        button = PrimaryButton(button_text)
+        # Przycisk
+        btn_text = "Przejdź" 
+        button = PrimaryButton(btn_text)
         button.setMinimumHeight(40)
         
-        # Połączenie przycisku z odpowiednią metodą
-        if action == "show_trail_page" and self.main_window:
-            button.clicked.connect(self.main_window.show_trail_page)
-        elif action == "show_weather_page" and self.main_window:
-            button.clicked.connect(self.main_window.show_weather_page)
-        elif action == "show_recommendation_page" and self.main_window:
-            button.clicked.connect(self.main_window.show_recommendation_page)
+        # Połączenie przycisku z akcją
+        if hasattr(self.main_window, action):
+            button.clicked.connect(getattr(self.main_window, action))
+            logger.debug(f"Utworzono kartę '{title}' z akcją '{action}'")
         
         card_layout.addWidget(button)
-        card_layout.addStretch()
-        
         return card 

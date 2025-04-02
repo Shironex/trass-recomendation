@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional, Any, Set
 from functools import reduce
 from pathlib import Path
+from src.utils.logger import logger
 
 
 @dataclass
@@ -37,6 +38,7 @@ class TrailData:
     
     def __init__(self):
         """Inicjalizacja obiektu TrailData."""
+        logger.debug("Inicjalizacja obiektu TrailData")
         self.trails: List[TrailRecord] = []
         self.filtered_trails: List[TrailRecord] = []
     
@@ -50,6 +52,7 @@ class TrailData:
         Raises:
             ValueError: Gdy nie udało się wczytać danych.
         """
+        logger.info(f"Wczytywanie danych z pliku CSV: {filepath}")
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
@@ -71,7 +74,9 @@ class TrailData:
                     for row in reader
                 ]
                 self.filtered_trails = self.trails.copy()
+                logger.info(f"Wczytano {len(self.trails)} tras z pliku CSV")
         except Exception as e:
+            logger.error(f"Błąd podczas wczytywania danych z CSV: {str(e)}")
             raise ValueError(f"Błąd podczas wczytywania danych z CSV: {str(e)}")
     
     def load_from_json(self, filepath: str) -> None:
@@ -84,6 +89,7 @@ class TrailData:
         Raises:
             ValueError: Gdy nie udało się wczytać danych.
         """
+        logger.info(f"Wczytywanie danych z pliku JSON: {filepath}")
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 data = json.load(file)
@@ -107,7 +113,9 @@ class TrailData:
                     for record in trail_records
                 ]
                 self.filtered_trails = self.trails.copy()
+                logger.info(f"Wczytano {len(self.trails)} tras z pliku JSON")
         except Exception as e:
+            logger.error(f"Błąd podczas wczytywania danych z JSON: {str(e)}")
             raise ValueError(f"Błąd podczas wczytywania danych z JSON: {str(e)}")
     
     def filter_by_length(self, min_length: float = 0, max_length: float = float('inf')) -> List[TrailRecord]:
@@ -121,11 +129,13 @@ class TrailData:
         Returns:
             Lista przefiltrowanych tras.
         """
+        logger.debug(f"Filtrowanie tras według długości: min={min_length} km, max={max_length} km")
         filtered = list(filter(
             lambda trail: min_length <= trail.length_km <= max_length,
             self.trails
         ))
         self.filtered_trails = filtered
+        logger.info(f"Znaleziono {len(filtered)} tras spełniających kryteria długości")
         return filtered
     
     def filter_by_difficulty(self, difficulty: int) -> List[TrailRecord]:
@@ -138,11 +148,13 @@ class TrailData:
         Returns:
             Lista przefiltrowanych tras.
         """
+        logger.debug(f"Filtrowanie tras według poziomu trudności: {difficulty}")
         filtered = list(filter(
             lambda trail: trail.difficulty == difficulty,
             self.filtered_trails
         ))
         self.filtered_trails = filtered
+        logger.info(f"Znaleziono {len(filtered)} tras o poziomie trudności {difficulty}")
         return filtered
     
     def filter_by_region(self, region: str) -> List[TrailRecord]:
@@ -155,11 +167,13 @@ class TrailData:
         Returns:
             Lista przefiltrowanych tras.
         """
+        logger.debug(f"Filtrowanie tras według regionu: {region}")
         filtered = list(filter(
             lambda trail: trail.region == region,
             self.filtered_trails
         ))
         self.filtered_trails = filtered
+        logger.info(f"Znaleziono {len(filtered)} tras w regionie {region}")
         return filtered
     
     def get_regions(self) -> List[str]:
@@ -169,7 +183,9 @@ class TrailData:
         Returns:
             Lista unikalnych regionów.
         """
+        logger.debug("Pobieranie listy unikalnych regionów")
         regions = {trail.region for trail in self.trails}
+        logger.debug(f"Znaleziono {len(regions)} unikalnych regionów")
         return sorted(regions)
     
     def get_difficulty_levels(self) -> List[int]:
@@ -179,7 +195,9 @@ class TrailData:
         Returns:
             Lista unikalnych poziomów trudności.
         """
+        logger.debug("Pobieranie listy unikalnych poziomów trudności")
         difficulty_levels = {trail.difficulty for trail in self.trails}
+        logger.debug(f"Znaleziono {len(difficulty_levels)} unikalnych poziomów trudności")
         return sorted(difficulty_levels)
     
     def get_terrain_types(self) -> List[str]:
@@ -189,7 +207,9 @@ class TrailData:
         Returns:
             Lista unikalnych typów terenu.
         """
+        logger.debug("Pobieranie listy unikalnych typów terenu")
         terrain_types = {trail.terrain_type for trail in self.trails}
+        logger.debug(f"Znaleziono {len(terrain_types)} unikalnych typów terenu")
         return sorted(terrain_types)
     
     def get_length_range(self) -> tuple:
@@ -199,12 +219,15 @@ class TrailData:
         Returns:
             Krotka (min_length, max_length).
         """
+        logger.debug("Obliczanie zakresu długości tras")
         if not self.trails:
+            logger.warn("Brak danych o trasach do obliczenia zakresu długości")
             return (0, 0)
         
         min_length = min(trail.length_km for trail in self.trails)
         max_length = max(trail.length_km for trail in self.trails)
         
+        logger.debug(f"Zakres długości tras: {min_length} - {max_length} km")
         return (min_length, max_length)
     
     def save_to_csv(self, filepath: str) -> None:
@@ -217,6 +240,7 @@ class TrailData:
         Raises:
             ValueError: Gdy nie udało się zapisać danych.
         """
+        logger.info(f"Zapisywanie {len(self.filtered_trails)} tras do pliku CSV: {filepath}")
         try:
             # Upewnij się, że katalog istnieje
             Path(filepath).parent.mkdir(parents=True, exist_ok=True)
@@ -245,7 +269,9 @@ class TrailData:
                         'terrain_type': trail.terrain_type,
                         'tags': ','.join(trail.tags)
                     })
+            logger.info(f"Pomyślnie zapisano dane do pliku CSV: {filepath}")
         except Exception as e:
+            logger.error(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
             raise ValueError(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
     
     def save_to_json(self, filepath: str) -> None:
@@ -258,6 +284,7 @@ class TrailData:
         Raises:
             ValueError: Gdy nie udało się zapisać danych.
         """
+        logger.info(f"Zapisywanie {len(self.filtered_trails)} tras do pliku JSON: {filepath}")
         try:
             # Upewnij się, że katalog istnieje
             Path(filepath).parent.mkdir(parents=True, exist_ok=True)
@@ -284,5 +311,7 @@ class TrailData:
             
             with open(filepath, 'w', encoding='utf-8') as file:
                 json.dump(data, file, indent=2, ensure_ascii=False)
+            logger.info(f"Pomyślnie zapisano dane do pliku JSON: {filepath}")
         except Exception as e:
+            logger.error(f"Błąd podczas zapisywania danych do JSON: {str(e)}")
             raise ValueError(f"Błąd podczas zapisywania danych do JSON: {str(e)}")

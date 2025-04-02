@@ -12,6 +12,7 @@ from src.ui.components import (
     StyledDoubleSpinBox, DataTable, CardFrame
 )
 from src.core.trail_data import TrailData
+from src.utils import logger
 
 
 class TrailPage(QWidget):
@@ -22,6 +23,7 @@ class TrailPage(QWidget):
         super().__init__(parent)
         self.main_window = parent
         self.trail_data = TrailData()
+        logger.debug("Inicjalizacja strony zarządzania trasami")
         self._setup_ui()
         self._connect_signals()
     
@@ -203,8 +205,10 @@ class TrailPage(QWidget):
             # Aktualizacja tabeli
             self._update_table()
             
+            logger.info(f"Dane tras wczytane pomyślnie z pliku {filepath}")
             QMessageBox.information(self, "Sukces", "Dane zostały wczytane pomyślnie!")
         except Exception as e:
+            logger.error(f"Błąd wczytywania danych tras: {str(e)}")
             QMessageBox.critical(self, "Błąd", f"Nie udało się wczytać danych: {str(e)}")
     
     def _update_filters(self):
@@ -249,6 +253,7 @@ class TrailPage(QWidget):
     def apply_filters(self):
         """Stosuje filtry do danych o trasach."""
         if not self.trail_data.trails:
+            logger.warn("Próba filtrowania pustych danych o trasach")
             QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do filtrowania!")
             return
         
@@ -292,9 +297,11 @@ class TrailPage(QWidget):
         
         try:
             self.trail_data.save_to_csv(filepath)
-            QMessageBox.information(self, "Sukces", "Dane zostały zapisane pomyślnie!")
+            logger.info(f"Dane tras wyeksportowane do pliku CSV: {filepath}")
+            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
         except Exception as e:
-            QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}")
+            logger.error(f"Błąd eksportu do CSV: {str(e)}")
+            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
     
     def export_to_json(self):
         """Eksportuje dane do pliku JSON."""
@@ -314,6 +321,8 @@ class TrailPage(QWidget):
         
         try:
             self.trail_data.save_to_json(filepath)
-            QMessageBox.information(self, "Sukces", "Dane zostały zapisane pomyślnie!")
+            logger.info(f"Dane tras wyeksportowane do pliku JSON: {filepath}")
+            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
         except Exception as e:
-            QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}") 
+            logger.error(f"Błąd eksportu do JSON: {str(e)}")
+            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}") 

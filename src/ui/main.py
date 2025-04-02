@@ -14,6 +14,7 @@ from src.ui.pages.home_page import HomePage
 from src.ui.pages.trail_page import TrailPage
 from src.ui.pages.weather_page import WeatherPage
 from src.ui.pages.recommendation_page import RecommendationPage
+from src.utils import logger
 
 
 class MainWindow(QMainWindow):
@@ -31,6 +32,7 @@ class MainWindow(QMainWindow):
             }
         """)
         
+        logger.debug("Inicjalizacja głównego okna aplikacji")
         self._setup_ui()
     
     def _setup_ui(self):
@@ -48,6 +50,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         
         # Tworzenie stron
+        logger.debug("Tworzenie stron aplikacji")
         self.home_page = HomePage(self)
         self.trail_page = TrailPage(self)
         self.weather_page = WeatherPage(self)
@@ -64,34 +67,42 @@ class MainWindow(QMainWindow):
         
         # Dodanie stosu do głównego układu
         main_layout.addWidget(self.stacked_widget)
+        logger.debug("Interfejs użytkownika skonfigurowany")
     
     def show_home_page(self):
         """Przejście do strony głównej."""
+        logger.debug("Przejście do strony głównej")
         self.stacked_widget.setCurrentWidget(self.home_page)
     
     def show_trail_page(self):
         """Przejście do strony tras."""
+        logger.debug("Przejście do strony tras")
         self.stacked_widget.setCurrentWidget(self.trail_page)
     
     def show_weather_page(self):
         """Przejście do strony danych pogodowych."""
+        logger.debug("Przejście do strony danych pogodowych")
         self.stacked_widget.setCurrentWidget(self.weather_page)
     
     def show_recommendation_page(self):
         """Przejście do strony rekomendacji."""
+        logger.debug("Przejście do strony rekomendacji")
         self.stacked_widget.setCurrentWidget(self.recommendation_page)
     
     def show_error(self, title, message):
         """Wyświetla okno dialogowe z błędem."""
+        logger.error(f"{title}: {message}")
         QMessageBox.critical(self, title, message)
     
     def show_info(self, title, message):
         """Wyświetla okno dialogowe z informacją."""
+        logger.info(f"{title}: {message}")
         QMessageBox.information(self, title, message)
 
 
 def run_app():
     """Uruchamia aplikację."""
+    logger.info("Uruchamianie aplikacji Rekomendator Tras Turystycznych")
     app = QApplication(sys.argv)
     app.setStyle('Fusion')  # Styl dla lepszego wyglądu na różnych platformach
     
@@ -122,4 +133,7 @@ def run_app():
     window = MainWindow()
     window.show()
     
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.error(f"Błąd podczas wykonania aplikacji: {str(e)}")
