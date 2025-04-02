@@ -3,3 +3,4 @@ venv/
 .coverage
 .pytest_cache
 node_modules
+trass_recomendation.egg-info
