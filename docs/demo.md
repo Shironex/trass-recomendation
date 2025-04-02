@@ -91,6 +91,31 @@ Aplikacja Trass Recommendation została zbudowana przy użyciu następujących t
     <h3>pytest</h3>
     <p>Biblioteka do pisania testów</p>
   </div>
+  <div class="tech-item">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/PyInstaller_Icon.svg/2048px-PyInstaller_Icon.svg.png" alt="PyInstaller" width="50" />
+    <h3>PyInstaller</h3>
+    <p>Narzędzie do tworzenia plików EXE</p>
+  </div>
+  <div class="tech-item">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Typescript_logo_2020.svg/1200px-Typescript_logo_2020.svg.png" alt="TypeScript" width="50" />
+    <h3>TypeScript</h3>
+    <p>Język dla konfiguracji dokumentacji</p>
+  </div>
+  <div class="tech-item">
+    <img src="https://vitepress.dev/vitepress-logo-large.webp" alt="VitePress" width="50" />
+    <h3>VitePress</h3>
+    <p>Framework do tworzenia dokumentacji</p>
+  </div>
+  <div class="tech-item">
+    <img src="https://pillow.readthedocs.io/en/stable/_static/pillow-logo-248x250.png" alt="Pillow" width="50" />
+    <h3>Pillow</h3>
+    <p>Biblioteka do przetwarzania obrazów</p>
+  </div>
+  <div class="tech-item">
+    <img src="https://raw.githubusercontent.com/tartley/colorama/master/.github/logo.png" alt="Colorama" width="50" />
+    <h3>Colorama</h3>
+    <p>Biblioteka do kolorowych logów konsolowych</p>
+  </div>
 </div>
 
 <div class="action-section">

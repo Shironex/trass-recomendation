@@ -10,14 +10,13 @@ Projekt posiada następującą strukturę:
 trass-recomendation/
 ├── src/                # Kod źródłowy aplikacji
 ├── tests/              # Testy aplikacji
-├── data/               # Pliki danych
+├── data/               # Testowe dane do użycia w aplikacji
 ├── docs/               # Dokumentacja (VitePress)
+├── docs/package.json   # Konfiguracja npm/pnpm
+├── docs/tsconfig.json  # Konfiguracja TypeScript
 ├── requirements.txt    # Zależności Python
 ├── setup.py            # Konfiguracja instalacji
-├── package.json        # Konfiguracja npm/pnpm
-├── tsconfig.json       # Konfiguracja TypeScript
-├── venv/               # Środowisko wirtualne (nie jest w repozytorium)
-└── TODO.md             # Lista zadań do wykonania
+└── venv/               # Środowisko wirtualne (nie jest w repozytorium)
 ```
 
 ## Katalogi główne
@@ -28,12 +27,12 @@ Katalog `src/` zawiera główny kod źródłowy aplikacji. Jest on podzielony na
 
 ```
 src/
-├── __init__.py        # Inicjalizacja pakietu
 ├── main.py            # Punkt wejściowy aplikacji
-├── models/            # Modele danych
-├── views/             # Komponenty interfejsu użytkownika
-├── controllers/       # Logika kontrolerów
-└── utils/             # Narzędzia pomocnicze
+├── core/              # Podstawowe komponenty i funkcjonalności
+├── ui/                # Komponenty interfejsu użytkownika
+├── utils/             # Narzędzia pomocnicze
+├── tools/             # Narzędzia do budowania i dystrybucji
+└── __pycache__/       # Skompilowane pliki Python (nie edytować)
 ```
 
 ### tests/
@@ -42,10 +41,9 @@ Katalog `tests/` zawiera testy jednostkowe i integracyjne dla aplikacji:
 
 ```
 tests/
-├── __init__.py
-├── test_models/       # Testy dla modeli
-├── test_controllers/  # Testy dla kontrolerów
-└── test_utils/        # Testy dla narzędzi
+├── test_main.py       # Testy dla głównego modułu
+├── test_utils.py      # Testy dla narzędzi pomocniczych 
+└── test_core.py       # Testy dla komponentów core
 ```
 
 ### data/
@@ -64,13 +62,19 @@ Katalog `docs/` zawiera dokumentację projektu w formacie VitePress z TypeScript
 
 ```
 docs/
-├── .vitepress/        # Konfiguracja VitePress
-│   ├── config.ts      # Konfiguracja w TypeScript
-│   ├── tsconfig.json  # Konfiguracja TypeScript dla VitePress
-│   └── theme/         # Customizacje motywu
-├── guide/             # Przewodnik użytkownika
-├── index.md           # Strona główna dokumentacji
-└── ...                # Inne strony dokumentacji
+├── .vitepress/           # Konfiguracja VitePress
+│   ├── config.ts         # Główna konfiguracja VitePress
+│   ├── siteConfig.ts     # Konfiguracja strony (tytuł, opis, linki społecznościowe)
+│   ├── theme/            # Customizacje motywu
+│   └── tsconfig.json     # Konfiguracja TypeScript dla VitePress
+├── public/               # Zasoby statyczne (obrazy, pliki)
+├── building-exe.md       # Instrukcje budowania EXE
+├── demo.md               # Demonstracja funkcjonalności
+├── installation.md       # Instrukcja instalacji
+├── index.md              # Strona główna dokumentacji
+├── running.md            # Instrukcje uruchamiania
+├── structure.md          # Struktura projektu (ten plik)
+└── testing.md            # Instrukcje testowania
 ```
 
 ## Pliki konfiguracyjne
@@ -93,7 +97,12 @@ setup(
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
-        ]
+        ],
+        "build": [
+            "pyinstaller>=6.0.0",
+            "pillow>=9.0.0",
+            "colorama>=0.4.6",
+        ],
     },
 )
 ```
@@ -104,6 +113,11 @@ Plik `requirements.txt` zawiera listę bezpośrednich zależności projektu:
 
 ```
 PyQt6>=6.6.1
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pyinstaller>=6.0.0
+pillow>=9.0.0
+colorama>=0.4.6
 ```
 
 ### package.json
@@ -161,26 +175,6 @@ Plik `tsconfig.json` zawiera konfigurację TypeScript dla projektu:
   "exclude": ["node_modules", "dist"]
 }
 ```
-
-## Konwencje nazewnictwa
-
-W projekcie stosujemy następujące konwencje:
-
-- Moduły i pakiety Python: `snake_case`
-- Klasy Python: `PascalCase`
-- Funkcje i zmienne Python: `snake_case`
-- Stałe Python: `UPPER_SNAKE_CASE`
-- Pliki TypeScript: `camelCase.ts` lub `PascalCase.ts` dla komponentów
-- Interfejsy TypeScript: `IPascalCase`
-- Typy TypeScript: `TPascalCase`
-
-## Organizacja kodu
-
-Kod jest zorganizowany zgodnie z wzorcem MVC (Model-View-Controller):
-
-- **Model**: Przechowuje dane i stan aplikacji
-- **View**: Odpowiada za interfejs użytkownika i prezentację
-- **Controller**: Zawiera logikę biznesową i łączy Model z View
 
 ## Następne kroki
 

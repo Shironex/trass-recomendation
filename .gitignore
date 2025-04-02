@@ -4,3 +4,6 @@ venv/
 .pytest_cache
 node_modules
 trass_recomendation.egg-info
+TrassRecommendation.spec
+build
+dist
