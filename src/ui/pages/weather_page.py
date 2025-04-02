@@ -269,6 +269,11 @@ class WeatherPage(QWidget):
         self.max_precip.valueChanged.connect(self._update_statistics)
         self.min_sunshine.valueChanged.connect(self._update_statistics)
         
+        # Aktualizacja przy zmianie lokalizacji lub daty
+        self.location.currentIndexChanged.connect(self._update_statistics)
+        self.start_date.dateChanged.connect(self._update_statistics)
+        self.end_date.dateChanged.connect(self._update_statistics)
+        
         if self.main_window:
             self.back_btn.clicked.connect(self.main_window.show_home_page)
     
@@ -354,7 +359,11 @@ class WeatherPage(QWidget):
         return filtered
 
     def _update_statistics(self):
-        """Aktualizuje statystyki pogodowe."""
+        """Aktualizuje statystyki pogodowe i tabelę."""
+        if not self.weather_data.records:
+            logger.debug("Próba aktualizacji statystyk bez wczytanych danych")
+            return
+            
         location_id = None
         if self.location.currentText() != "Wszystkie":
             location_id = self.location.currentText()
@@ -362,28 +371,41 @@ class WeatherPage(QWidget):
         start_date = self.start_date.date().toPyDate()
         end_date = self.end_date.date().toPyDate()
         
-        # Najpierw filtruj według lokalizacji i dat
-        filtered_records = self.weather_data.records.copy()
+        # Podstawowe filtry
+        filters = {}
         if location_id:
-            filtered_records = [r for r in filtered_records if r.location_id == location_id]
-        filtered_records = [r for r in filtered_records if start_date <= r.date <= end_date]
+            filters['location'] = location_id
+        if start_date and end_date and start_date <= end_date:
+            filters['date_range'] = (start_date, end_date)
+            
+        # Pobierz rekordy z podstawowymi filtrami
+        filtered_records = self.weather_data.filter_records(**filters)
         
         # Następnie zastosuj preferencje pogodowe
-        filtered_records = self._filter_by_preferences(filtered_records)
+        preference_filtered = self._filter_by_preferences(filtered_records)
+        
+        # Zaktualizuj tabelę z wynikami filtrowania
+        self._update_table(preference_filtered)
+        
+        # Aktualizuj status
+        status_msg = f"Wyświetlanie {len(preference_filtered)} z {len(self.weather_data.records)} rekordów"
+        self.status_label.setText(status_msg)
         
         # Oblicz statystyki na przefiltrowanych danych
-        if filtered_records:
-            avg_temp = sum(r.avg_temp for r in filtered_records) / len(filtered_records)
-            total_precip = sum(r.precipitation for r in filtered_records)
-            sunny_days = sum(1 for r in filtered_records if r.sunshine_hours >= self.min_sunshine.value())
+        if preference_filtered:
+            avg_temp = sum(r.avg_temp for r in preference_filtered) / len(preference_filtered)
+            total_precip = sum(r.precipitation for r in preference_filtered)
+            sunny_days = sum(1 for r in preference_filtered if r.sunshine_hours >= self.min_sunshine.value())
             
             self.avg_temp.setText(f"{avg_temp:.1f} °C")
             self.total_precip.setText(f"{total_precip:.1f} mm")
             self.sunny_days.setText(f"{sunny_days}")
+            logger.debug(f"Zaktualizowano statystyki: temp={avg_temp:.1f}°C, opady={total_precip:.1f}mm, słoneczne dni={sunny_days}")
         else:
             self.avg_temp.setText("0.0 °C")
             self.total_precip.setText("0.0 mm")
             self.sunny_days.setText("0")
+            logger.debug("Brak rekordów spełniających kryteria filtrowania")
     
     def apply_filters(self):
         """Stosuje wybrane filtry do danych pogodowych."""
@@ -415,7 +437,12 @@ class WeatherPage(QWidget):
         
         # Filtrowanie danych i aktualizacja tabeli
         filtered_records = self.weather_data.filter_records(**filters)
+        
+        # Zastosuj dodatkowe preferencje użytkownika
+        filtered_records = self._filter_by_preferences(filtered_records)
+        
         self._update_table(filtered_records)
+        self._update_statistics()
         
         status_msg = f"Wyświetlanie {len(filtered_records)} z {len(self.weather_data.records)} rekordów"
         self.status_label.setText(status_msg)
