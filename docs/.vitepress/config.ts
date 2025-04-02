@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitepress'
+import { siteConfig } from './siteConfig'
 
 export default defineConfig({
-  title: 'Trass Recommendation',
-  description: 'System rekomendacji tras oparty na PyQt6',
-  lang: 'pl-PL',
+  title: siteConfig.title,
+  description: siteConfig.description,
+  lang: siteConfig.lang,
   lastUpdated: true,
   head: [
     ['link', { rel: 'icon', href: '/images/hero-image.svg' }],
@@ -37,12 +38,10 @@ export default defineConfig({
         ]
       }
     ],
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-username/trass-recomendation' }
-    ],
+    socialLinks: siteConfig.socialLinks,
     footer: {
-      message: 'System rekomendacji tras',
-      copyright: '© 2023-2024 Trass Recommendation'
-    }
+      message: siteConfig.footer.message,
+      copyright: siteConfig.footer.copyright,
+    },
   }
 }) 
