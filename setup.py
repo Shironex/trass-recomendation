@@ -6,6 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "PyQt6>=6.6.1",
+        "colorama>=0.4.6",
     ],
     extras_require={
         "dev": [

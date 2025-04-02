@@ -3,7 +3,9 @@ Moduł zawierający klasę do kolorowych logów konsolowych.
 """
 
 import datetime
+import platform
 from enum import Enum
+import colorama
 
 
 class LogLevel(Enum):
@@ -41,6 +43,8 @@ class ColorLogger:
             level (LogLevel): Minimalny poziom logowania (domyślnie INFO)
             show_timestamps (bool): Czy pokazywać znaczniki czasu (domyślnie True)
         """
+        if platform.system() == 'Windows':
+            colorama.init()  # Inicjalizacja colorama dla Windows
         self.level = level
         self.show_timestamps = show_timestamps
 
