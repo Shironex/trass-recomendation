@@ -44,16 +44,40 @@ pip install -e .
 pnpm install
 ```
 
+## Zarządzanie zależnościami
+
+Projekt wykorzystuje plik `setup.py` do zarządzania zależnościami. Zalety tego rozwiązania:
+
+1. Instalacja podstawowych zależności:
+```bash
+pip install -e .
+```
+
+2. Instalacja zależności deweloperskich/testowych:
+```bash
+pip install -e ".[dev]"
+```
+
+Główne zależności projektu:
+- PyQt6 >= 6.6.1 - biblioteka do tworzenia interfejsu graficznego
+
+Zależności deweloperskie:
+- pytest >= 7.0.0 - framework do testów jednostkowych
+- pytest-cov >= 4.0.0 - rozszerzenie do analizy pokrycia kodu testami
+
+Możesz również dodać lub zaktualizować zależności, modyfikując pliki `setup.py` i `requirements.txt`.
+
 ## Struktura projektu
 
 ```
 trass-recomendation/
-├── src/               # Kod źródłowy aplikacji
-├── data/             # Pliki danych
-├── requirements.txt  # Zależności Python
-├── setup.py         # Konfiguracja instalacji
-├── venv/            # Środowisko wirtualne (nie jest w repozytorium)
-└── TODO.md          # Lista zadań do wykonania
+├── src/                # Kod źródłowy aplikacji
+├── tests/              # Testy aplikacji
+├── data/               # Pliki danych
+├── requirements.txt    # Zależności Python
+├── setup.py           # Konfiguracja instalacji
+├── venv/              # Środowisko wirtualne (nie jest w repozytorium)
+└── TODO.md            # Lista zadań do wykonania
 ```
 
 ## Uruchomienie aplikacji
@@ -70,6 +94,27 @@ source venv/bin/activate
 2. Uruchom aplikację:
 ```bash
 python src/main.py
+```
+
+## Uruchamianie testów
+
+Aby uruchomić testy jednostkowe, należy wykonać następujące kroki:
+
+1. Upewnić się, że zainstalowane są wszystkie zależności testowe:
+```bash
+pip install -e ".[dev]"
+```
+
+2. Uruchomić testy przy użyciu pytest:
+```bash
+# Uruchomienie wszystkich testów
+pytest
+
+# Uruchomienie testów z określonego modułu
+pytest tests/test_weather_data.py
+
+# Uruchomienie testów z pokryciem kodu
+pytest --cov=src tests/
 ```
 
 ## Rozwiązywanie problemów

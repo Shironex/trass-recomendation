@@ -1,11 +1,12 @@
 README.md
 setup.py
-src/__init__.py
 src/main.py
-src/trail_data.py
-src/weather_data.py
 src/ui/__init__.py
-src/ui/desktop.py
+tests/__init__.py
+tests/conftest.py
+tests/test_trail_data.py
+tests/test_weather_data.py
+tests/test_weather_filter.py
 trass_recomendation.egg-info/PKG-INFO
 trass_recomendation.egg-info/SOURCES.txt
 trass_recomendation.egg-info/dependency_links.txt
