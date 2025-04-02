@@ -1,0 +1,30 @@
+{
+  "name": "trass-recomendation",
+  "version": "1.0.0",
+  "description": "System rekomendacji tras oparty na PyQt6",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.12.3"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "recommendation",
+    "routes",
+    "PyQt6"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitepress": "^1.6.3",
+    "vue": "^3.4.15",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.5"
+  }
+} 

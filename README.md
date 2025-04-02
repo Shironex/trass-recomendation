@@ -5,7 +5,8 @@ System rekomendacji tras oparty na PyQt6.
 ## Wymagania systemowe
 
 - Python 3.8 lub nowszy
-- pnpm (menedżer pakietów)
+- Node.js 20.0.0 lub nowszy
+- pnpm 9.12.3 lub nowszy
 
 ## Instalacja
 
@@ -39,7 +40,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-5. Zainstaluj zależności Node.js (jeśli są wymagane):
+5. Zainstaluj zależności Node.js:
 ```bash
 pnpm install
 ```
@@ -61,11 +62,15 @@ pip install -e ".[dev]"
 Główne zależności projektu:
 - PyQt6 >= 6.6.1 - biblioteka do tworzenia interfejsu graficznego
 
-Zależności deweloperskie:
+Zależności deweloperskie Python:
 - pytest >= 7.0.0 - framework do testów jednostkowych
 - pytest-cov >= 4.0.0 - rozszerzenie do analizy pokrycia kodu testami
 
-Możesz również dodać lub zaktualizować zależności, modyfikując pliki `setup.py` i `requirements.txt`.
+Zależności JavaScript/TypeScript:
+- VitePress 1.6.3 - generator statycznej dokumentacji
+- TypeScript 5.3.3 - język programowania będący nadzbiorem JavaScript
+
+Możesz również dodać lub zaktualizować zależności, modyfikując pliki `setup.py`, `requirements.txt` i `package.json`.
 
 ## Struktura projektu
 
@@ -74,10 +79,15 @@ trass-recomendation/
 ├── src/                # Kod źródłowy aplikacji
 ├── tests/              # Testy aplikacji
 ├── data/               # Pliki danych
+├── docs/               # Dokumentacja (VitePress z TypeScript)
+│   ├── .vitepress/     # Konfiguracja VitePress (TypeScript)
+│   └── ...             # Strony dokumentacji
 ├── requirements.txt    # Zależności Python
-├── setup.py           # Konfiguracja instalacji
-├── venv/              # Środowisko wirtualne (nie jest w repozytorium)
-└── TODO.md            # Lista zadań do wykonania
+├── setup.py            # Konfiguracja instalacji Python
+├── package.json        # Konfiguracja npm/pnpm
+├── tsconfig.json       # Konfiguracja TypeScript
+├── venv/               # Środowisko wirtualne (nie jest w repozytorium)
+└── TODO.md             # Lista zadań do wykonania
 ```
 
 ## Uruchomienie aplikacji
@@ -94,6 +104,20 @@ source venv/bin/activate
 2. Uruchom aplikację:
 ```bash
 python src/main.py
+```
+
+## Uruchamianie dokumentacji
+
+Aby uruchomić lokalnie dokumentację VitePress:
+
+```bash
+pnpm docs:dev
+```
+
+Aby zbudować dokumentację do wdrożenia:
+
+```bash
+pnpm docs:build
 ```
 
 ## Uruchamianie testów

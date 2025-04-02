@@ -1,0 +1,232 @@
+/**
+ * Niestandardowe style CSS dla dokumentacji VitePress
+ */
+
+:root {
+  --vp-c-brand: #3498db;
+  --vp-c-brand-light: #5dade2;
+  --vp-c-brand-lighter: #85c1e9;
+  --vp-c-brand-dark: #2980b9;
+  --vp-c-brand-darker: #1f618d;
+
+  --vp-home-hero-name-color: var(--vp-c-brand-dark);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    var(--vp-c-brand-lighter) 30%,
+    var(--vp-c-brand-darker) 70%
+  );
+  --vp-home-hero-image-filter: blur(40px);
+  
+  /* Poprawione wyrównanie sekcji */
+  --vp-layout-max-width: 1400px;
+}
+
+/* Logo w trybie jasnym i ciemnym */
+.dark .VPImage.logo {
+  filter: brightness(1.1);
+}
+
+/* Niestandardowe stylowanie dla bloków kodu */
+.vp-doc div[class*='language-'] {
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+/* Stylowanie nagłówków */
+.vp-doc h1 {
+  font-weight: 700;
+  border-bottom: 2px solid var(--vp-c-brand-light);
+  padding-bottom: 0.3em;
+  margin-top: 1.5rem;
+}
+
+.vp-doc h2 {
+  border-left: 4px solid var(--vp-c-brand);
+  padding-left: 0.5em;
+}
+
+/* Stylowanie tabel */
+.vp-doc table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vp-doc thead {
+  background-color: var(--vp-c-brand-lighter);
+  color: var(--vp-c-bg);
+}
+
+.vp-doc th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.vp-doc td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc tr:nth-child(2n) {
+  background-color: rgba(125, 125, 125, 0.05);
+}
+
+.vp-doc tr:last-child td {
+  border-bottom: none;
+}
+
+/* Responsywne obrazy */
+.vp-doc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.vp-doc img:hover {
+  transform: scale(1.01);
+}
+
+/* Obrazy aplikacji */
+.thumbnail-image {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: top;
+  max-height: 200px;
+}
+
+.demo-image {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: top;
+  max-height: 400px;
+}
+
+/* Ulepszenia dla strony głównej */
+.VPFeature {
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.VPFeature:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Sekcje na stronie głównej */
+.custom-container {
+  max-width: var(--vp-layout-max-width);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.custom-section {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background-color: var(--vp-c-bg-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.custom-section:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Przyciski */
+.vp-doc .custom-button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--vp-c-brand);
+  color: white;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.vp-doc .custom-button:hover {
+  background-color: var(--vp-c-brand-dark);
+}
+
+/* Kontenery demo */
+.demo-container {
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .demo-container {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .demo-container .demo-image {
+    width: 60%;
+  }
+  
+  .demo-container .demo-description {
+    width: 40%;
+    padding: 0 1rem;
+  }
+}
+
+.demo-description h3 {
+  color: var(--vp-c-brand);
+  margin-bottom: 0.75rem;
+}
+
+/* Ulepszenia dla nawigacji */
+.VPNav {
+  backdrop-filter: blur(8px);
+}
+
+/* Ulepszenia dla sidebara */
+.VPSidebar {
+  padding-top: 1rem;
+}
+
+.VPSidebarItem.level-1 .text {
+  font-weight: 600;
+}
+
+/* Poprawienie kontrastu dla linków */
+.vp-doc a {
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--vp-c-brand);
+  transition: color 0.3s ease, border-bottom 0.3s ease;
+}
+
+.vp-doc a:hover {
+  color: var(--vp-c-brand-dark);
+  border-bottom: 1px solid var(--vp-c-brand-dark);
+}
+
+/* Responsywność */
+@media (max-width: 768px) {
+  .custom-container {
+    padding: 0 1rem;
+  }
+  
+  .custom-section {
+    padding: 1rem;
+  }
+  
+  .demo-image {
+    max-height: 300px;
+  }
+} 
