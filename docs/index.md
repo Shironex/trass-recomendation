@@ -5,7 +5,7 @@ hero:
   text: "System rekomendacji tras"
   tagline: "Zaawansowane narzędzie do rekomendacji tras oparte na PyQt6"
   image:
-    src: /images/hero-image.svg
+    src: /hero-image.svg
     alt: Trass Recommendation Logo
   actions:
     - theme: brand
@@ -36,15 +36,15 @@ features:
     <h2>Zrzuty ekranu aplikacji</h2>
     <div class="screenshot-grid">
       <div class="screenshot">
-        <img src="/images/manage_trail.png" alt="Zarządzanie trasami" class="thumbnail-image" />
+        <img src="/manage_trail.png" alt="Zarządzanie trasami" class="thumbnail-image" />
         <p>Zarządzanie trasami</p>
       </div>
       <div class="screenshot">
-        <img src="/images/manage_weather.png" alt="Zarządzanie trasami" class="thumbnail-image" />
+        <img src="/manage_weather.png" alt="Zarządzanie trasami" class="thumbnail-image" />
         <p>Zarządzanie Pogodą</p>
       </div>
       <div class="screenshot">
-        <img src="/images/recomendations_page.png" alt="Panel rekomendacji" class="thumbnail-image" />
+        <img src="/recomendations_page.png" alt="Panel rekomendacji" class="thumbnail-image" />
         <p>Panel rekomendacji tras</p>
       </div>
     </div>
@@ -67,9 +67,9 @@ features:
 
   <div class="custom-section">
     <h2>Rozpocznij pracę</h2>
-    <p>Aby rozpocząć pracę z projektem, przejdź do sekcji <a href="/guide/">Przewodnik</a> lub zapoznaj się z instrukcją <a href="/installation">Instalacji</a>.</p>
+    <p>Aby rozpocząć pracę z projektem, przejdź do sekcji <a href="/trass-recomendation/guide/">Przewodnik</a> lub zapoznaj się z instrukcją <a href="/trass-recomendation/installation">Instalacji</a>.</p>
     <div style="margin-top: 1rem;">
-      <a href="/demo" class="custom-button">Zobacz demo</a>
+      <a href="/trass-recomendation/demo" class="custom-button">Zobacz demo</a>
     </div>
   </div>
 </div>

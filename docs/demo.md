@@ -7,7 +7,7 @@ Na tej stronie znajdziesz demonstrację funkcjonalności aplikacji Trass Recomme
 Ekran główny aplikacji Trass Recommendation zawiera listę dostępnych tras z możliwością zarządzania i przeglądania. Użytkownik może dodawać, edytować i usuwać trasy.
 
 <div class="demo-container">
-  <img src="/images/home-page.png" alt="Ekran główny aplikacji" class="demo-image" />
+  <img src="/home-page.png" alt="Ekran główny aplikacji" class="demo-image" />
   <div class="demo-description">
     <h3>Główne funkcje ekranu:</h3>
     <ul>
@@ -24,7 +24,7 @@ Ekran główny aplikacji Trass Recommendation zawiera listę dostępnych tras z 
 Ekran zarządzania trasami pozwala na kompleksową edycję informacji o dostępnych trasach, w tym ich parametrów, trudności i szczegółów.
 
 <div class="demo-container">
-  <img src="/images/manage_trail.png" alt="Zarządzanie trasami" class="demo-image" />
+  <img src="/manage_trail.png" alt="Zarządzanie trasami" class="demo-image" />
   <div class="demo-description">
     <h3>Główne funkcje zarządzania:</h3>
     <ul>
@@ -42,7 +42,7 @@ Ekran zarządzania trasami pozwala na kompleksową edycję informacji o dostępn
 System rekomendacji analizuje preferencje użytkownika i historię jego aktywności, aby przedstawić spersonalizowane propozycje tras. Trasy są sortowane według stopnia dopasowania do profilu użytkownika.
 
 <div class="demo-container">
-  <img src="/images/recomendations_page.png" alt="Panel rekomendacji" class="demo-image" />
+  <img src="/recomendations_page.png" alt="Panel rekomendacji" class="demo-image" />
   <div class="demo-description">
     <h3>Główne funkcje panelu:</h3>
     <ul>
@@ -59,7 +59,7 @@ System rekomendacji analizuje preferencje użytkownika i historię jego aktywno�
 System uwzględnia również warunki pogodowe przy rekomendacji tras. Moduł zarządzania pogodą pozwala na integrację i aktualizację danych pogodowych.
 
 <div class="demo-container">
-  <img src="/images/manage_weather.png" alt="Zarządzanie pogodą" class="demo-image" />
+  <img src="/manage_weather.png" alt="Zarządzanie pogodą" class="demo-image" />
   <div class="demo-description">
     <h3>Główne funkcje modułu:</h3>
     <ul>
@@ -87,9 +87,9 @@ Aplikacja Trass Recommendation została zbudowana przy użyciu następujących t
     <p>Framework do tworzenia interfejsu użytkownika</p>
   </div>
   <div class="tech-item">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Pandas_logo.svg/2560px-Pandas_logo.svg.png" alt="Pandas" width="100" />
-    <h3>Pandas</h3>
-    <p>Biblioteka do analizy danych</p>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/1869px-Python-logo-notext.svg.png" alt="Python" width="50" />
+    <h3>pytest</h3>
+    <p>Biblioteka do pisania testów</p>
   </div>
 </div>
 
@@ -97,17 +97,7 @@ Aplikacja Trass Recommendation została zbudowana przy użyciu następujących t
   <h2>Wypróbuj sam</h2>
   
   <p>Aby samodzielnie wypróbować aplikację Trass Recommendation:</p>
-  
-  <ol>
-    <li>Zainstaluj projekt zgodnie z <a href="/installation">instrukcją instalacji</a></li>
-    <li>Uruchom aplikację według <a href="/running">instrukcji uruchamiania</a></li>
-    <li>Eksploruj dostępne funkcje i opcje</li>
-  </ol>
-  
-  <div class="buttons-container">
-    <a href="/installation" class="custom-button">Instalacja</a>
-    <a href="/running" class="custom-button secondary-button">Uruchomienie</a>
-  </div>
+  <p>Zainstaluj projekt zgodnie z <a href="/trass-recomendation/installation">instrukcją instalacji</a></p>
 </div>
 
 <style>

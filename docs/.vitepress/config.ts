@@ -6,18 +6,18 @@ export default defineConfig({
   description: siteConfig.description,
   lang: siteConfig.lang,
   lastUpdated: true,
-  base: '/trass-recomendation/',
+  base: `${ siteConfig.base}/`,
   head: [
-    ['link', { rel: 'icon', href: '/trass-recomendation/images/hero-image.svg' }],
+    ['link', { rel: 'icon', href: `${ siteConfig.base}/hero-image.svg` }],
     ['meta', { name: 'author', content: 'Trass Team' }],
     ['meta', { name: 'keywords', content: 'trasy, rekomendacje, PyQt6, system rekomendacji, turystyka' }],
     ['meta', { property: 'og:title', content: 'Trass Recommendation System' }],
     ['meta', { property: 'og:description', content: 'System rekomendacji tras oparty na PyQt6' }],
-    ['meta', { property: 'og:image', content: '/trass-recomendation/images/recomendations_page.png' }],
+    ['meta', { property: 'og:image', content: `${ siteConfig.base}/recomendations_page.png` }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
   themeConfig: {
-    logo: '/trass-recomendation/images/hero-image.svg',
+    logo: `${ siteConfig.base}/hero-image.svg`,
     nav: [
       { text: 'Strona główna', link: '/' },
       { text: 'Przewodnik', link: '/guide/' },

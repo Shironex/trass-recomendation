@@ -1,4 +1,5 @@
 export const siteConfig = {
+  base: '/trass-recomendation',
   title: "Trass Recommendation",
   description: "System rekomendacji tras oparty na PyQt6",
   lang: "pl-PL",
