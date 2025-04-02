@@ -33,10 +33,29 @@ class WeatherPage(QWidget):
     def _setup_ui(self):
         """Konfiguracja interfejsu użytkownika."""
         # Główny układ
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(20)
         
+        # Inicjalizacja układu głównego
+        self.content_layout = QHBoxLayout()
+        self.left_column = QVBoxLayout()
+        self.right_column = QVBoxLayout()
+        
+        # Konfiguracja poszczególnych części UI
+        self._setup_top_bar()
+        self._setup_filters()
+        self._setup_statistics()
+        self._setup_operations()
+        self._setup_data_table()
+        
+        # Finalizacja układu
+        self.content_layout.addLayout(self.left_column, 1)
+        self.content_layout.addLayout(self.right_column, 2)
+        self.layout.addLayout(self.content_layout)
+    
+    def _setup_top_bar(self):
+        """Konfiguracja górnego paska z tytułem i przyciskiem powrotu."""
         # Górny pasek z tytułem i przyciskiem powrotu
         top_bar = QHBoxLayout()
         
@@ -51,14 +70,10 @@ class WeatherPage(QWidget):
         top_bar.setStretchFactor(self.back_btn, 1)
         top_bar.setStretchFactor(title, 3)
         
-        layout.addLayout(top_bar)
-        
-        # Układ dwukolumnowy
-        content_layout = QHBoxLayout()
-        
-        # Lewa kolumna - filtry i operacje
-        left_column = QVBoxLayout()
-        
+        self.layout.addLayout(top_bar)
+    
+    def _setup_filters(self):
+        """Konfiguracja filtrów danych pogodowych."""
         # Karta filtrów
         filter_card = CardFrame()
         filter_layout = QVBoxLayout(filter_card)
@@ -156,8 +171,10 @@ class WeatherPage(QWidget):
         filter_layout.addWidget(self.filter_btn)
         
         # Dodanie karty filtrów do lewej kolumny
-        left_column.addWidget(filter_card)
-        
+        self.left_column.addWidget(filter_card)
+    
+    def _setup_statistics(self):
+        """Konfiguracja karty statystyk."""
         # Karta statystyk
         stats_card = CardFrame()
         stats_layout = QVBoxLayout(stats_card)
@@ -197,8 +214,10 @@ class WeatherPage(QWidget):
         stats_layout.addLayout(stats_grid)
         
         # Dodanie karty statystyk do lewej kolumny
-        left_column.addWidget(stats_card)
-        
+        self.left_column.addWidget(stats_card)
+    
+    def _setup_operations(self):
+        """Konfiguracja karty operacji na danych."""
         # Przyciski operacji na danych
         operations_card = CardFrame()
         operations_layout = QVBoxLayout(operations_card)
@@ -231,12 +250,11 @@ class WeatherPage(QWidget):
         operations_layout.addLayout(export_layout)
         
         # Dodanie karty operacji do lewej kolumny
-        left_column.addWidget(operations_card)
-        left_column.addStretch()
-        
-        # Prawa kolumna - tabela z danymi
-        right_column = QVBoxLayout()
-        
+        self.left_column.addWidget(operations_card)
+        self.left_column.addStretch()
+    
+    def _setup_data_table(self):
+        """Konfiguracja tabeli danych pogodowych."""
         # Tabela danych pogodowych
         self.weather_table = DataTable()
         self.weather_table.setColumnCount(7)
@@ -245,17 +263,11 @@ class WeatherPage(QWidget):
             "Maks. temp. (°C)", "Opady (mm)", "Nasł. (h)"
         ])
         
-        right_column.addWidget(self.weather_table)
+        self.right_column.addWidget(self.weather_table)
         
         # Status label pod tabelą
         self.status_label = StyledLabel("")
-        right_column.addWidget(self.status_label)
-        
-        # Dodanie kolumn do głównego układu
-        content_layout.addLayout(left_column, 1)
-        content_layout.addLayout(right_column, 2)
-        
-        layout.addLayout(content_layout)
+        self.right_column.addWidget(self.status_label)
     
     def _connect_signals(self):
         """Połączenie sygnałów z slotami."""
