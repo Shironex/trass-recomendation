@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, Any, Set
 from functools import reduce
 from pathlib import Path
 from src.utils.logger import logger
+from src.utils.file import safe_file_operation
 
 
 @dataclass
@@ -241,10 +242,8 @@ class TrailData:
             ValueError: Gdy nie udało się zapisać danych.
         """
         logger.info(f"Zapisywanie {len(self.filtered_trails)} tras do pliku CSV: {filepath}")
-        try:
-            # Upewnij się, że katalog istnieje
-            Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-            
+        
+        def write_csv(filepath):
             fieldnames = [
                 'id', 'name', 'region', 'start_lat', 'start_lon', 'end_lat', 'end_lon',
                 'length_km', 'elevation_gain', 'difficulty', 'terrain_type', 'tags'
@@ -253,7 +252,6 @@ class TrailData:
             with open(filepath, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
-                
                 for trail in self.filtered_trails:
                     writer.writerow({
                         'id': trail.id,
@@ -269,11 +267,9 @@ class TrailData:
                         'terrain_type': trail.terrain_type,
                         'tags': ','.join(trail.tags)
                     })
-            logger.info(f"Pomyślnie zapisano dane do pliku CSV: {filepath}")
-        except Exception as e:
-            logger.error(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
-            raise ValueError(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
-    
+        
+        safe_file_operation(write_csv, filepath, "CSV")
+
     def save_to_json(self, filepath: str) -> None:
         """
         Zapisuje przefiltrowane dane do pliku JSON.
@@ -285,10 +281,8 @@ class TrailData:
             ValueError: Gdy nie udało się zapisać danych.
         """
         logger.info(f"Zapisywanie {len(self.filtered_trails)} tras do pliku JSON: {filepath}")
-        try:
-            # Upewnij się, że katalog istnieje
-            Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-            
+        
+        def write_json(filepath):
             data = {
                 'trail_records': [
                     {
@@ -311,7 +305,5 @@ class TrailData:
             
             with open(filepath, 'w', encoding='utf-8') as file:
                 json.dump(data, file, indent=2, ensure_ascii=False)
-            logger.info(f"Pomyślnie zapisano dane do pliku JSON: {filepath}")
-        except Exception as e:
-            logger.error(f"Błąd podczas zapisywania danych do JSON: {str(e)}")
-            raise ValueError(f"Błąd podczas zapisywania danych do JSON: {str(e)}")
+        
+        safe_file_operation(write_json, filepath, "JSON")

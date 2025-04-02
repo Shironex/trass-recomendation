@@ -10,6 +10,7 @@ from typing import List, Dict, Optional, Any, Tuple
 from functools import reduce
 from pathlib import Path
 from src.utils.logger import logger
+from src.utils.file import safe_file_operation
 
 
 @dataclass
@@ -315,10 +316,8 @@ class WeatherData:
             ValueError: Gdy nie udało się zapisać danych.
         """
         logger.info(f"Zapisywanie {len(self.filtered_records)} rekordów pogodowych do pliku CSV: {filepath}")
-        try:
-            # Upewnij się, że katalog istnieje
-            Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-            
+        
+        def write_csv(filepath):
             fieldnames = [
                 'date', 'location_id', 'avg_temp', 'min_temp', 'max_temp',
                 'precipitation', 'sunshine_hours', 'cloud_cover'
@@ -339,10 +338,8 @@ class WeatherData:
                         'sunshine_hours': record.sunshine_hours,
                         'cloud_cover': record.cloud_cover
                     })
-            logger.info(f"Pomyślnie zapisano dane do pliku CSV: {filepath}")
-        except Exception as e:
-            logger.error(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
-            raise ValueError(f"Błąd podczas zapisywania danych do CSV: {str(e)}")
+        
+        safe_file_operation(write_csv, filepath, "CSV")
     
     def save_to_json(self, filepath: str) -> None:
         """
@@ -355,10 +352,8 @@ class WeatherData:
             ValueError: Gdy nie udało się zapisać danych.
         """
         logger.info(f"Zapisywanie {len(self.filtered_records)} rekordów pogodowych do pliku JSON: {filepath}")
-        try:
-            # Upewnij się, że katalog istnieje
-            Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-            
+        
+        def write_json(filepath):
             data = {
                 'weather_records': [
                     {
@@ -377,10 +372,8 @@ class WeatherData:
             
             with open(filepath, 'w', encoding='utf-8') as file:
                 json.dump(data, file, indent=2, ensure_ascii=False)
-            logger.info(f"Pomyślnie zapisano dane do pliku JSON: {filepath}")
-        except Exception as e:
-            logger.error(f"Błąd podczas zapisywania danych do JSON: {str(e)}")
-            raise ValueError(f"Błąd podczas zapisywania danych do JSON: {str(e)}")
+        
+        safe_file_operation(write_json, filepath, "JSON")
 
 
 
