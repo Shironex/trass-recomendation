@@ -48,21 +48,21 @@ class MainPage(QWidget):
         layout = QVBoxLayout(self)
         
         # Title
-        title = QLabel("Tourist Route Recommender")
+        title = QLabel("Rekomendator tras turystycznych")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 24px; font-weight: bold; margin: 20px;")
         layout.addWidget(title)
         
         # Buttons
-        filter_btn = QPushButton("Filter Trails")
+        filter_btn = QPushButton("Filtrowanie tras")
         filter_btn.clicked.connect(self.show_trail_filter)
         layout.addWidget(filter_btn)
         
-        weather_btn = QPushButton("Weather Data & Preferences")
+        weather_btn = QPushButton("Dane pogodowe")
         weather_btn.clicked.connect(self.show_weather_data)
         layout.addWidget(weather_btn)
         
-        recommend_btn = QPushButton("Get Recommendations")
+        recommend_btn = QPushButton("Rekomendacje")
         recommend_btn.clicked.connect(self.show_recommendations)
         layout.addWidget(recommend_btn)
         
@@ -78,87 +78,118 @@ class MainPage(QWidget):
             self.main_window.stacked_widget.setCurrentWidget(self.main_window.weather_data_page)
     
     def show_recommendations(self):
-        QMessageBox.information(self, "Recommendations", "Getting recommendations... (To be implemented)")
+        QMessageBox.information(self, "Rekomendacje", "Generowanie rekomendacji... (Do zaimplementowania)")
 
 class TrailFilterPage(QWidget):
     def __init__(self, main_window=None):
         super().__init__()
         self.main_window = main_window
         self.trail_data = TrailData()
-        self.filtered_trails = []  # Store filtered trails
+        self.filtered_trails = []
         layout = QVBoxLayout(self)
         
         # Title
-        title = QLabel("Trail Filtering")
+        title = QLabel("Filtrowanie tras")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 20px; font-weight: bold; margin: 10px;")
         layout.addWidget(title)
         
         # Load data button
-        load_btn = QPushButton("Load Trail Data")
+        load_btn = QPushButton("Wczytaj dane o trasach")
         load_btn.clicked.connect(self.load_trail_data)
         layout.addWidget(load_btn)
         
+        # Create two columns layout
+        columns_layout = QHBoxLayout()
+        
+        # Left column - Filters
+        left_column = QVBoxLayout()
+        
+        # Filters group
+        filters_group = QGroupBox("Filtry")
+        filters_layout = QVBoxLayout()
+        
         # Length filter
-        length_group = QWidget()
-        length_layout = QVBoxLayout(length_group)
-        length_layout.addWidget(QLabel("Trail Length (km):"))
+        length_layout = QVBoxLayout()
+        length_layout.addWidget(QLabel("Długość trasy (km):"))
         length_inputs = QWidget()
         length_inputs_layout = QHBoxLayout(length_inputs)
         self.min_length = QDoubleSpinBox()
-        self.min_length.setRange(0, 100)
+        self.min_length.setRange(0, 1000)
         self.max_length = QDoubleSpinBox()
-        self.max_length.setRange(0, 100)
+        self.max_length.setRange(0, 1000)
+        self.max_length.setValue(1000)
         length_inputs_layout.addWidget(QLabel("Min:"))
         length_inputs_layout.addWidget(self.min_length)
         length_inputs_layout.addWidget(QLabel("Max:"))
         length_inputs_layout.addWidget(self.max_length)
         length_layout.addWidget(length_inputs)
-        layout.addWidget(length_group)
+        filters_layout.addLayout(length_layout)
         
         # Difficulty filter
-        difficulty_group = QWidget()
-        difficulty_layout = QVBoxLayout(difficulty_group)
-        difficulty_layout.addWidget(QLabel("Difficulty Level:"))
+        difficulty_layout = QVBoxLayout()
+        difficulty_layout.addWidget(QLabel("Poziom trudności:"))
         self.difficulty = QComboBox()
-        self.difficulty.addItems(["Any"] + [str(i) for i in range(1, 6)])
+        self.difficulty.addItems(["Wszystkie"] + [str(i) for i in range(1, 6)])
         difficulty_layout.addWidget(self.difficulty)
-        layout.addWidget(difficulty_group)
+        filters_layout.addLayout(difficulty_layout)
         
         # Region filter
-        region_group = QWidget()
-        region_layout = QVBoxLayout(region_group)
+        region_layout = QVBoxLayout()
         region_layout.addWidget(QLabel("Region:"))
         self.region = QComboBox()
-        self.region.addItem("Any")
+        self.region.addItem("Wszystkie")
         region_layout.addWidget(self.region)
-        layout.addWidget(region_group)
+        filters_layout.addLayout(region_layout)
         
-        # Filter button
-        filter_btn = QPushButton("Apply Filters")
-        filter_btn.clicked.connect(self.apply_filters)
-        layout.addWidget(filter_btn)
+        filters_group.setLayout(filters_layout)
+        left_column.addWidget(filters_group)
+        
+        # Right column - Results
+        right_column = QVBoxLayout()
+        
+        # Results group
+        results_group = QGroupBox("Wyniki")
+        results_layout = QVBoxLayout()
         
         # Results table
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(5)
-        self.results_table.setHorizontalHeaderLabels(["Name", "Region", "Length (km)", "Difficulty", "Terrain"])
+        self.results_table.setHorizontalHeaderLabels([
+            "Nazwa", "Region", "Długość (km)", 
+            "Poziom trudności", "Rodzaj terenu"
+        ])
         self.results_table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.results_table)
+        results_layout.addWidget(self.results_table)
+        
+        results_group.setLayout(results_layout)
+        right_column.addWidget(results_group)
+        
+        # Add columns to main layout
+        columns_layout.addLayout(left_column)
+        columns_layout.addLayout(right_column)
+        layout.addLayout(columns_layout)
+        
+        # Buttons layout
+        buttons_layout = QHBoxLayout()
+        
+        # Apply filters button
+        apply_btn = QPushButton("Zastosuj filtry")
+        apply_btn.clicked.connect(self.apply_filters)
+        buttons_layout.addWidget(apply_btn)
         
         # Export buttons
-        export_group = QWidget()
-        export_layout = QHBoxLayout(export_group)
-        export_csv_btn = QPushButton("Export to CSV")
+        export_csv_btn = QPushButton("Eksportuj do CSV")
         export_csv_btn.clicked.connect(self.export_to_csv)
-        export_json_btn = QPushButton("Export to JSON")
+        export_json_btn = QPushButton("Eksportuj do JSON")
         export_json_btn.clicked.connect(self.export_to_json)
-        export_layout.addWidget(export_csv_btn)
-        export_layout.addWidget(export_json_btn)
-        layout.addWidget(export_group)
+        buttons_layout.addWidget(export_csv_btn)
+        buttons_layout.addWidget(export_json_btn)
+        
+        layout.addLayout(buttons_layout)
         
         # Back button
-        back_btn = QPushButton("Back to Main Menu")
+        back_btn = QPushButton("Powrót do menu głównego")
         back_btn.clicked.connect(self.back_to_main)
         layout.addWidget(back_btn)
     
@@ -166,9 +197,9 @@ class TrailFilterPage(QWidget):
         """Load trail data from a file."""
         filepath, _ = QFileDialog.getOpenFileName(
             self,
-            "Load Trail Data",
+            "Wczytaj dane o trasach",
             "",
-            "CSV Files (*.csv);;JSON Files (*.json)"
+            "Pliki CSV (*.csv);;Pliki JSON (*.json)"
         )
         if filepath:
             try:
@@ -179,12 +210,12 @@ class TrailFilterPage(QWidget):
                 
                 # Update region combo box
                 self.region.clear()
-                self.region.addItem("Any")
+                self.region.addItem("Wszystkie")
                 self.region.addItems(self.trail_data.get_regions())
                 
                 # Update difficulty combo box
                 self.difficulty.clear()
-                self.difficulty.addItem("Any")
+                self.difficulty.addItem("Wszystkie")
                 self.difficulty.addItems([str(i) for i in self.trail_data.get_difficulty_levels()])
                 
                 # Update length range
@@ -193,26 +224,26 @@ class TrailFilterPage(QWidget):
                 self.max_length.setRange(0, max_len)
                 self.max_length.setValue(max_len)
                 
-                QMessageBox.information(self, "Success", "Trail data loaded successfully!")
+                QMessageBox.information(self, "Sukces", "Dane zostały wczytane pomyślnie!")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to load trail data: {str(e)}")
+                QMessageBox.critical(self, "Błąd", f"Nie udało się wczytać danych: {str(e)}")
     
     def apply_filters(self):
         """Apply filters and display results."""
         if not self.trail_data.trails:
-            QMessageBox.warning(self, "Warning", "No trail data loaded!")
+            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych o trasach!")
             return
         
         # Get filter values
         min_len = self.min_length.value()
         max_len = self.max_length.value()
-        difficulty = int(self.difficulty.currentText()) if self.difficulty.currentText() != "Any" else None
-        region = self.region.currentText() if self.region.currentText() != "Any" else None
+        difficulty = int(self.difficulty.currentText()) if self.difficulty.currentText() != "Wszystkie" else None
+        region = self.region.currentText() if self.region.currentText() != "Wszystkie" else None
         
         # Apply filters
         self.filtered_trails = self.trail_data.trails
         
-        if min_len > 0 or max_len < 100:
+        if min_len > 0 or max_len < 1000:
             self.filtered_trails = self.trail_data.filter_by_length(min_len, max_len)
         
         if difficulty is not None:
@@ -233,14 +264,14 @@ class TrailFilterPage(QWidget):
     def export_to_csv(self):
         """Export filtered trails to CSV file."""
         if not self.filtered_trails:
-            QMessageBox.warning(self, "Warning", "No filtered trails to export!")
+            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
             return
         
         filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "Export to CSV",
+            "Eksportuj do CSV",
             "",
-            "CSV Files (*.csv)"
+            "Pliki CSV (*.csv)"
         )
         if filepath:
             try:
@@ -248,21 +279,21 @@ class TrailFilterPage(QWidget):
                 temp_data = TrailData()
                 temp_data.trails = self.filtered_trails
                 temp_data.save_to_csv(filepath)
-                QMessageBox.information(self, "Success", "Trails exported to CSV successfully!")
+                QMessageBox.information(self, "Sukces", "Dane zostały zapisane do pliku CSV!")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to export trails: {str(e)}")
+                QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}")
     
     def export_to_json(self):
         """Export filtered trails to JSON file."""
         if not self.filtered_trails:
-            QMessageBox.warning(self, "Warning", "No filtered trails to export!")
+            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
             return
         
         filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "Export to JSON",
+            "Eksportuj do JSON",
             "",
-            "JSON Files (*.json)"
+            "Pliki JSON (*.json)"
         )
         if filepath:
             try:
@@ -270,9 +301,9 @@ class TrailFilterPage(QWidget):
                 temp_data = TrailData()
                 temp_data.trails = self.filtered_trails
                 temp_data.save_to_json(filepath)
-                QMessageBox.information(self, "Success", "Trails exported to JSON successfully!")
+                QMessageBox.information(self, "Sukces", "Dane zostały zapisane do pliku JSON!")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to export trails: {str(e)}")
+                QMessageBox.critical(self, "Błąd", f"Nie udało się zapisać danych: {str(e)}")
     
     def back_to_main(self):
         if self.main_window:
