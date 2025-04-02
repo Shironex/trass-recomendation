@@ -16,6 +16,13 @@ class RouteRecommender:
     danych o trasach i preferencji pogodowych użytkownika.
     """
     
+    # Wagi używane do obliczania oceny pogody
+    WEATHER_SCORE_WEIGHTS = {
+        'temperature': 40,
+        'precipitation': 30, 
+        'sunshine': 30
+    }
+    
     def __init__(self, trail_data: TrailData, weather_data: WeatherData):
         """
         Inicjalizacja obiektu RouteRecommender.
@@ -24,6 +31,7 @@ class RouteRecommender:
             trail_data: Obiekt TrailData z danymi o trasach.
             weather_data: Obiekt WeatherData z danymi pogodowymi.
         """
+        logger.debug("Inicjalizacja systemu rekomendacji")
         self.trail_data = trail_data
         self.weather_data = weather_data
     
@@ -69,7 +77,10 @@ class RouteRecommender:
                                min_temp: float = 15.0,
                                max_temp: float = 25.0,
                                max_precipitation: float = 5.0,
-                               min_sunshine_hours: float = 4.0) -> float:
+                               min_sunshine_hours: float = 4.0,
+                               temperature_weight: float = None,
+                               precipitation_weight: float = None,
+                               sunshine_weight: float = None) -> float:
         """
         Oblicza ocenę pogody dla danej lokalizacji i zakresu dat.
         
@@ -80,6 +91,9 @@ class RouteRecommender:
             max_temp: Maksymalna preferowana temperatura.
             max_precipitation: Maksymalna akceptowalna suma opadów.
             min_sunshine_hours: Minimalna preferowana liczba godzin słonecznych.
+            temperature_weight: Waga temperatury w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['temperature']).
+            precipitation_weight: Waga opadów w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['precipitation']).
+            sunshine_weight: Waga nasłonecznienia w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['sunshine']).
             
         Returns:
             Ocena pogody (0-100).
@@ -87,34 +101,42 @@ class RouteRecommender:
         logger.debug(f"[_calculate_weather_score] Obliczanie oceny pogody dla lokalizacji: {location}")
         start_date, end_date = date_range
         
+        # Używanie domyślnych wag jeśli nie podano innych
+        if temperature_weight is None:
+            temperature_weight = self.WEATHER_SCORE_WEIGHTS['temperature']
+        if precipitation_weight is None:
+            precipitation_weight = self.WEATHER_SCORE_WEIGHTS['precipitation']
+        if sunshine_weight is None:
+            sunshine_weight = self.WEATHER_SCORE_WEIGHTS['sunshine']
+        
         try:
             # Pobieranie statystyk pogodowych
             stats = self.weather_data.calculate_statistics(location, start_date, end_date)
             logger.debug(f"[_calculate_weather_score] Statystyki pogodowe: {stats}")
             
-            # Ocena temperatury (0-40 punktów)
+            # Ocena temperatury
             avg_temp = stats['avg_temperature']
             temp_score = 0
             if min_temp <= avg_temp <= max_temp:
-                temp_score = 40
+                temp_score = temperature_weight
             else:
                 # Im dalej od preferowanego zakresu, tym mniejsza ocena
                 distance = min(abs(avg_temp - min_temp), abs(avg_temp - max_temp))
-                temp_score = max(0, 40 - (distance * 4))
+                temp_score = max(0, temperature_weight - (distance * 4))
             logger.debug(f"[_calculate_weather_score] Ocena temperatury: {temp_score:.2f}")
             
-            # Ocena opadów (0-30 punktów)
+            # Ocena opadów
             precipitation = stats['total_precipitation']
             precip_score = 0
             if precipitation <= max_precipitation:
-                precip_score = 30 * (1 - precipitation / max_precipitation)
+                precip_score = precipitation_weight * (1 - precipitation / max_precipitation)
             logger.debug(f"[_calculate_weather_score] Ocena opadów: {precip_score:.2f}")
             
-            # Ocena nasłonecznienia (0-30 punktów)
+            # Ocena nasłonecznienia
             sunny_days = stats['sunny_days_count']
             total_days = (end_date - start_date).days + 1
             sunny_ratio = sunny_days / total_days if total_days > 0 else 0
-            sunshine_score = 30 * sunny_ratio
+            sunshine_score = sunshine_weight * sunny_ratio
             logger.debug(f"[_calculate_weather_score] Ocena nasłonecznienia: {sunshine_score:.2f}")
             
             # Łączna ocena
