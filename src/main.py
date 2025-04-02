@@ -1,16 +1,22 @@
-#!/usr/bin/env python3
 """
-Main entry point for the Tourist Route Recommender application.
-This module initializes and runs the application.
+Główny plik aplikacji - punkt wejścia.
 """
 
-from ui.desktop import run_desktop_app
-
-def main():
-    """
-    Main function that initializes and runs the application.
-    """
-    run_desktop_app()
+import sys
+from PyQt6.QtWidgets import QApplication
+from ui.main import MainWindow
+from src.utils import logger, LogLevel
 
 if __name__ == "__main__":
-    main() 
+    # Ustawienie poziomu logowania (opcjonalnie)
+    # logger = ColorLogger(LogLevel.DEBUG)  # Pokaż wszystkie komunikaty
+    logger.level = LogLevel.DEBUG  # Pokaż wszystkie komunikaty
+    
+    logger.info("Uruchamianie aplikacji Rekomendator Tras Turystycznych")
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    try:
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.error(f"Błąd podczas wykonania aplikacji: {str(e)}") 

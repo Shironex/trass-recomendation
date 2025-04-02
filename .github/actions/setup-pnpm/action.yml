@@ -1,0 +1,38 @@
+name: 'Setup Node.js and pnpm'
+description: 'Konfiguruje środowisko Node.js i pnpm dla budowy dokumentacji VitePress'
+
+inputs:
+  node-version:
+    description: 'Wersja Node.js do użycia'
+    required: false
+    default: '20'
+  pnpm-version:
+    description: 'Wersja pnpm do użycia'
+    required: false
+    default: '9.12.3'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: ${{ inputs.pnpm-version }}
+        run_install: false
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.pnpm-store
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install

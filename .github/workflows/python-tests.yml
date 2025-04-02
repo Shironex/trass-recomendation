@@ -1,0 +1,48 @@
+name: Python Tests
+
+on:
+  push:
+    branches: [ master, dev ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'setup.py'
+      - 'requirements.txt'
+      - '.github/workflows/python-tests.yml'
+      - '.github/actions/setup-python/**'
+  pull_request:
+    branches: [ master, dev ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'setup.py'
+      - 'requirements.txt'
+      - '.github/workflows/python-tests.yml'
+      - '.github/actions/setup-python/**'
+  workflow_dispatch:  # Pozwala na ręczne uruchomienie workflow
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python environment
+      uses: ./.github/actions/setup-python
+      with:
+        python-version: ${{ matrix.python-version }}
+        install-test-deps: 'true'
+
+    - name: Test with pytest
+      run: |
+        pytest --cov --cov-branch --cov-report=xml
+  
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        fail_ci_if_error: false 

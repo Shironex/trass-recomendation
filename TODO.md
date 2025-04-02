@@ -5,9 +5,8 @@
   - `data/` - katalog na pliki z danymi
   - `src/` - katalog na kod źródłowy
   - `tests/` - katalog na testy
-  - `docs/` - katalog na dokumentację
+  - `docs/` - katalog na dokumentację używając vitepress
 - [x] Utworzenie pliku `requirements.txt` z zależnościami
-- [x] Utworzenie pliku README.md z opisem projektu
 
 ## 2. Implementacja modułów (Etap 1)
 
@@ -30,17 +29,17 @@
 - [x] Implementacja funkcji do zapisywania przetworzonych danych
 
 ### 2.3 Moduł przetwarzania danych (`src/data_processor.py`)
-- [x] Implementacja funkcji wykorzystujących programowanie funkcyjne:
-  - [x] Użycie `map()` do transformacji danych
-  - [x] Użycie `filter()` do filtrowania danych
-  - [x] Użycie `reduce()` do agregacji danych
-- [x] Implementacja wyrażeń listowych i słownikowych
-- [x] Implementacja funkcji lambda do operacji na danych
+- [ ] Implementacja funkcji wykorzystujących programowanie funkcyjne:
+  - [ ] Użycie `map()` do transformacji danych
+  - [ ] Użycie `filter()` do filtrowania danych
+  - [ ] Użycie `reduce()` do agregacji danych
+- [ ] Implementacja wyrażeń listowych i słownikowych
+- [ ] Implementacja funkcji lambda do operacji na danych
 
 ### 2.4 Moduł interfejsu użytkownika (`src/ui.py`)
-- [x] Implementacja prostego interfejsu konsolowego
+- [x] Implementacja prostego interfejsu desktopowego
 - [x] Funkcje do wyświetlania menu
-- [x] Funkcje do pobierania danych od użytkownika
+- [ ] Funkcje do pobierania danych od użytkownika
 
 ## 3. Testy
 - [ ] Utworzenie testów jednostkowych dla każdego modułu
@@ -50,6 +49,7 @@
 ## 4. Dokumentacja
 - [x] Dokumentacja kodu (docstringi)
 - [x] Instrukcja instalacji i uruchomienia
+- [ ] Dokumentacja vitepress
 
 ## 5. Dane przykładowe
 - [x] Przygotowanie przykładowych plików CSV z danymi o trasach

@@ -1,0 +1,3 @@
+"""
+Pakiet zawierający strony aplikacji.
+"""
