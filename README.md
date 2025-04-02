@@ -34,7 +34,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Zainstaluj zależności Node.js (jeśli są wymagane):
+4. Zainstaluj pakiet w trybie edycyjnym:
+```bash
+pip install -e .
+```
+
+5. Zainstaluj zależności Node.js (jeśli są wymagane):
 ```bash
 pnpm install
 ```
@@ -67,23 +72,20 @@ source venv/bin/activate
 python src/main.py
 ```
 
-## Rozwój projektu
+## Rozwiązywanie problemów
 
-1. Utwórz nową gałąź dla swoich zmian:
+### Problem z importami
+
+Jeśli występuje błąd `ModuleNotFoundError: No module named 'src'`, upewnij się, że:
+
+1. Pakiet został zainstalowany w trybie edycyjnym:
 ```bash
-git checkout -b feature/nazwa-funkcjonalnosci
+pip install -e .
 ```
 
-2. Wprowadź zmiany i zatwierdź je:
-```bash
-git add .
-git commit -m "Opis zmian"
-```
+2. Środowisko wirtualne jest aktywne
 
-3. Wypchnij zmiany do repozytorium:
-```bash
-git push origin feature/nazwa-funkcjonalnosci
-```
+3. Jesteś w głównym katalogu projektu podczas uruchamiania aplikacji
 
 ## Licencja
 
