@@ -28,11 +28,15 @@ RESOURCES_DIR = TOOLS_DIR / "resources"
 
 def create_app_icon(output_path=None, sizes=[16, 32, 48, 64, 128, 256]):
     """
-    Tworzy plik ikony aplikacji (.ico) zawierający ikony w różnych rozmiarach.
+    Tworzy plik ikony aplikacji (.ico) zawierający ikony w różnych rozmiarach
+    oraz zapisuje poszczególne rozmiary jako oddzielne pliki PNG.
     
     Args:
         output_path (str): Ścieżka wyjściowa pliku ikony. Jeśli None, używa domyślnej ścieżki.
         sizes (list): Lista rozmiarów ikon do wygenerowania.
+    
+    Returns:
+        list: Lista ścieżek do wygenerowanych plików.
     """
     # Jeśli nie podano ścieżki, użyj domyślnej
     if output_path is None:
@@ -46,6 +50,7 @@ def create_app_icon(output_path=None, sizes=[16, 32, 48, 64, 128, 256]):
     
     # Przygotowanie listy obrazów
     images = []
+    generated_files = []
     
     # Generowanie obrazów w różnych rozmiarach
     for size in sizes:
@@ -82,9 +87,14 @@ def create_app_icon(output_path=None, sizes=[16, 32, 48, 64, 128, 256]):
         
         # Dodanie obrazu do listy
         images.append(img)
-        logger.debug(f"Utworzono ikonę w rozmiarze {size}x{size}")
+        
+        # Zapisanie pojedynczej ikony jako plik PNG
+        png_path = os.path.join(output_dir, f"icon_{size}x{size}.png")
+        img.save(png_path, format='PNG')
+        generated_files.append(png_path)
+        logger.debug(f"Utworzono ikonę w rozmiarze {size}x{size}: {png_path}")
     
-    # Zapisanie pliku ikony
+    # Zapisanie pliku ikony ze wszystkimi rozmiarami
     try:
         images[0].save(
             output_path,
@@ -92,7 +102,15 @@ def create_app_icon(output_path=None, sizes=[16, 32, 48, 64, 128, 256]):
             sizes=[(img.width, img.height) for img in images],
             append_images=images[1:]
         )
+        generated_files.append(output_path)
         logger.info(f"Ikona została utworzona: {output_path}")
+        
+        # Podsumowanie wszystkich wygenerowanych plików
+        logger.info(f"Łącznie wygenerowano {len(generated_files)} plików:")
+        for file_path in generated_files:
+            logger.info(f" - {file_path}")
+            
+        return generated_files
     except Exception as e:
         logger.error(f"Błąd podczas zapisywania ikony: {str(e)}")
         raise
