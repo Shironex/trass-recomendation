@@ -17,7 +17,7 @@ export default defineConfig({
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
   themeConfig: {
-    logo: '/images/hero-image.svg',
+    logo: '/trass-recomendation/images/hero-image.svg',
     nav: [
       { text: 'Strona główna', link: '/' },
       { text: 'Przewodnik', link: '/guide/' },
