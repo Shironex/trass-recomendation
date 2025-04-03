@@ -2,7 +2,7 @@
 # Makefile dla projektu Trass Recommendation
 # --------------------------------
 
-.PHONY: help install install-dev install-build dev build test docs icons install-deps update-deps run dev-hot setup dev-hot-logs
+.PHONY: help install install-dev install-build dev build test test-cov docs icons install-deps update-deps run dev-hot setup dev-hot-logs
 
 # Zmienne srodowiskowe - używamy pełnych ścieżek z ukośnikami w kierunku naprzód
 VENV = venv
@@ -21,6 +21,7 @@ help:
 	@echo "make dev-hot-logs    - Uruchamia aplikacje z hot reloadingiem i tylko logami hot reload"
 	@echo "make run             - Uruchamia aplikacje"
 	@echo "make test            - Uruchamia testy"
+	@echo "make test-cov        - Uruchamia testy z pokryciem kodu"
 	@echo "make build           - Buduje aplikacje jako plik EXE"
 	@echo "make build-debug     - Buduje aplikacje jako plik EXE w trybie debugowania z logami"
 	@echo "make icons           - Generuje ikony aplikacji"
