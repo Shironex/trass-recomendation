@@ -4,9 +4,15 @@ Główny plik aplikacji - punkt wejścia.
 
 import sys
 import argparse
+from pathlib import Path
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QSize
 from ui.main import MainWindow
 from src.utils import logger, LogLevel
+
+# Ścieżka do katalogu zasobów
+RESOURCES_DIR = Path("src/tools/resources") 
 
 # Funkcja do włączania hot reload
 def try_enable_hot_reload():
@@ -47,7 +53,40 @@ if __name__ == "__main__":
     
     # Inicjalizacja aplikacji Qt
     app = QApplication(sys.argv)
-    window = MainWindow()
+    
+    # Ustawienie ikony aplikacji
+    try:
+        # Specjalne ustawienie dla Windows
+        import ctypes
+        myappid = 'TrassRecommendation.App.1.0'  # dowolny unikalny string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        logger.debug("Ustawiono AppUserModelID dla Windows")
+    except Exception as e:
+        logger.warning(f"Nie udało się ustawić AppUserModelID: {e}")
+
+    # Ustawienie ikony aplikacji
+    icon_path = RESOURCES_DIR
+    if icon_path.exists():
+        app_icon = QIcon()
+        # Dodanie wszystkich rozmiarów ikon w kolejności od najmniejszej do największej
+        icon_sizes = [16, 24, 32, 48, 128, 256]
+        for size in icon_sizes:
+            icon_file = f'src/tools/resources/icon_{size}x{size}.png'
+            if Path(icon_file).exists():
+                app_icon.addFile(icon_file, QSize(size, size))
+                logger.debug(f"Dodano ikonę {size}x{size}")
+        
+        # Ustawienie ikony dla aplikacji
+        app.setWindowIcon(app_icon)
+        
+        # Ustawienie ikony dla głównego okna
+        window = MainWindow()
+        window.setWindowIcon(app_icon)
+        logger.debug(f"Ustawiono ikonę aplikacji: {icon_path}")
+    else:
+        logger.warning(f"Nie znaleziono pliku ikony: {icon_path}")
+        window = MainWindow()
+    
     window.show()
     
     try:
