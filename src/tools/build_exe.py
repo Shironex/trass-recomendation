@@ -7,6 +7,7 @@ import sys
 import shutil
 from pathlib import Path
 import argparse
+import distutils.sysconfig
 
 try:
     import PyInstaller.__main__
@@ -35,7 +36,13 @@ except ImportError:
 TOOLS_DIR = Path(__file__).resolve().parent
 RESOURCES_DIR = TOOLS_DIR / "resources"
 
-def build_exe(one_file=False, console=False, clean=False):
+def create_resources_dir():
+    """Tworzy katalog resources, jeśli nie istnieje."""
+    if not RESOURCES_DIR.exists():
+        RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Utworzono katalog {RESOURCES_DIR}")
+
+def build_exe(one_file=False, console=False, clean=False, debug_mode=False):
     """
     Buduje aplikację jako plik EXE za pomocą PyInstaller.
     
@@ -43,6 +50,7 @@ def build_exe(one_file=False, console=False, clean=False):
         one_file (bool): Czy budować jako pojedynczy plik EXE.
         console (bool): Czy aplikacja ma pokazywać konsolę.
         clean (bool): Czy usunąć pliki tymczasowe przed budowaniem.
+        debug_mode (bool): Czy włączyć tryb debugowania w aplikacji.
     """
     logger.info("Budowanie aplikacji jako plik EXE...")
     
@@ -114,17 +122,47 @@ def build_exe(one_file=False, console=False, clean=False):
     
     # Dodanie ścieżek dla importów
     args.append("--paths=.")
+    args.append("--paths=src")
+    
+    # Dodanie ścieżki do modułów Pythona, aby rozwiązać problem z 'encodings'
+    python_lib = distutils.sysconfig.get_python_lib(standard_lib=True)
+    args.append(f"--paths={python_lib}")
     
     # Dodanie ukrytych importów
     hidden_imports = [
         "PyQt6.QtCore",
         "PyQt6.QtWidgets",
         "PyQt6.QtGui",
+        "encodings",
+        "encodings.utf_8",
+        "encodings.ascii",
+        "encodings.latin_1",
+        "encodings.cp1250",
+        "encodings.cp1252",
     ]
     for imp in hidden_imports:
         args.append(f"--hidden-import={imp}")
     
+    # Dodanie argumentów uruchomieniowych, jeśli tryb debugowania jest włączony
+    if debug_mode:
+        logger.info("Włączanie trybu debugowania w aplikacji...")
+        args.append("--add-binary=src;src")  # Zapewnia dostęp do kodu źródłowego
+        # Dodanie argumentu --debug do uruchamianej aplikacji
+        args.append('--runtime-hook=src/tools/debug_hook.py')  # Hook uruchomieniowy
+
     try:
+        # Utwórz hook uruchomieniowy dla trybu debugowania
+        if debug_mode:
+            hook_path = Path("src/tools/debug_hook.py")
+            with open(hook_path, 'w') as f:
+                f.write("""
+import sys
+# Dodaj argument --debug do sys.argv przy uruchamianiu aplikacji
+if '--debug' not in sys.argv:
+    sys.argv.append('--debug')
+""")
+            logger.debug(f"Utworzono hook uruchomieniowy dla trybu debugowania: {hook_path}")
+        
         # Uruchomienie PyInstaller
         logger.debug(f"Uruchamianie PyInstaller z argumentami: {args}")
         PyInstaller.__main__.run(args)
@@ -138,17 +176,17 @@ def build_exe(one_file=False, console=False, clean=False):
         else:
             logger.info(f"Katalog z aplikacją znajduje się w: {output_path}")
         
+        # Usuń hook po zakończeniu budowania
+        if debug_mode and hook_path.exists():
+            hook_path.unlink()
+            logger.debug("Usunięto tymczasowy hook uruchomieniowy")
+            
     except Exception as e:
         logger.error(f"Błąd podczas budowania: {str(e)}")
         return False
     
     return True
 
-def create_resources_dir():
-    """Tworzy katalog resources w katalogu src/tools, jeśli nie istnieje."""
-    if not RESOURCES_DIR.exists():
-        RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Utworzono katalog {RESOURCES_DIR}")
 
 def main():
     # Ustawienie poziomu logowania na DEBUG
@@ -160,12 +198,15 @@ def main():
     parser.add_argument("--clean", action="store_true", help="Usuń pliki tymczasowe przed budowaniem")
     parser.add_argument("--generate-icon", action="store_true", help="Wygeneruj ikonę aplikacji przed budowaniem")
     parser.add_argument("--quiet", action="store_true", help="Pokazuj tylko ważne komunikaty (logowanie na poziomie INFO)")
+    parser.add_argument("--debug", action="store_true", help="Włącz tryb debugowania w aplikacji")
     
     args = parser.parse_args()
     
     # Ustawienie poziomu logowania na INFO, jeśli wybrano opcję --quiet
     if args.quiet:
         logger.level = LogLevel.INFO
+    else:
+        logger.level = LogLevel.DEBUG
     
     create_resources_dir()
     
@@ -175,7 +216,7 @@ def main():
         output_path = str(RESOURCES_DIR / "icon.ico")
         create_app_icon(output_path=output_path)
     
-    build_exe(one_file=args.onefile, console=args.console, clean=args.clean)
+    build_exe(one_file=args.onefile, console=args.console, clean=args.clean, debug_mode=args.debug)
 
 if __name__ == "__main__":
     main() 

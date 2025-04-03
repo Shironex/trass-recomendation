@@ -13,6 +13,7 @@ setup(
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
+            "watchdog>=6.0.0",
         ],
         "build": [
             "pyinstaller>=6.0.0",
@@ -21,6 +22,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'trass-run=src.main:main',
             'trass-build-exe=src.tools.build_exe:main',
             'trass-create-icon=src.tools.create_icon:main',
         ],
