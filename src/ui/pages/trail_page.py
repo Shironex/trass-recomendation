@@ -2,8 +2,11 @@
 Strona zarządzania trasami aplikacji Rekomendator Tras Turystycznych.
 """
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QTableWidgetItem
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QTableWidgetItem,
+    QLabel, QGroupBox, QPushButton, QComboBox, QSlider, QFormLayout
+)
+from PyQt6.QtCore import Qt, QDate
 
 import sys
 sys.path.append('.')
@@ -11,7 +14,6 @@ from src.ui.components import (
     StyledLabel, BaseButton, PrimaryButton, StyledComboBox,
     StyledDoubleSpinBox, DataTable, CardFrame
 )
-from src.core.trail_data import TrailData
 from src.utils import logger
 
 
@@ -22,7 +24,6 @@ class TrailPage(QWidget):
         """Inicjalizacja strony zarządzania trasami."""
         super().__init__(parent)
         self.main_window = parent
-        self.trail_data = TrailData()
         logger.debug("Inicjalizacja strony zarządzania trasami")
         self._setup_ui()
         self._connect_signals()
@@ -34,127 +35,140 @@ class TrailPage(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
-        # Górny pasek z tytułem i przyciskiem powrotu
-        top_bar = QHBoxLayout()
+        # Tytuł strony
+        title_label = StyledLabel("Zarządzanie Trasami", is_title=True)
+        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
         
-        # Przycisk powrotu
-        self.back_btn = BaseButton("Powrót do menu głównego")
-        top_bar.addWidget(self.back_btn)
+        # Grupa API
+        api_group = QGroupBox("Pobieranie danych z API")
+        layout.addWidget(api_group)
         
-        # Tytuł
-        title = StyledLabel("Zarządzanie Trasami", is_title=True)
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        top_bar.addWidget(title)
-        top_bar.setStretchFactor(self.back_btn, 1)
-        top_bar.setStretchFactor(title, 3)
+        api_layout = QFormLayout(api_group)
         
-        layout.addLayout(top_bar)
-        
-        # Układ dwukolumnowy
-        content_layout = QHBoxLayout()
-        
-        # Lewa kolumna - filtry
-        left_column = QVBoxLayout()
-        
-        # Karta filtrów
-        filter_card = CardFrame()
-        filter_layout = QVBoxLayout(filter_card)
-        filter_layout.setSpacing(15)
-        
-        # Tytuł filtrów
-        filter_title = StyledLabel("Filtry")
-        font = filter_title.font()
-        font.setBold(True)
-        filter_title.setFont(font)
-        filter_layout.addWidget(filter_title)
-        
-        # Długość trasy
-        length_layout = QVBoxLayout()
-        length_layout.addWidget(StyledLabel("Długość trasy (km):"))
-        
-        length_inputs = QHBoxLayout()
-        
-        length_inputs.addWidget(StyledLabel("Min:"))
-        self.min_length = StyledDoubleSpinBox()
-        self.min_length.setRange(0, 1000)
-        length_inputs.addWidget(self.min_length)
-        
-        length_inputs.addWidget(StyledLabel("Max:"))
-        self.max_length = StyledDoubleSpinBox()
-        self.max_length.setRange(0, 1000)
-        self.max_length.setValue(1000)
-        length_inputs.addWidget(self.max_length)
-        
-        length_layout.addLayout(length_inputs)
-        filter_layout.addLayout(length_layout)
-        
-        # Poziom trudności
-        difficulty_layout = QVBoxLayout()
-        difficulty_layout.addWidget(StyledLabel("Poziom trudności:"))
-        self.difficulty = StyledComboBox()
-        self.difficulty.addItem("Wszystkie")
-        difficulty_layout.addWidget(self.difficulty)
-        filter_layout.addLayout(difficulty_layout)
+        # Wybór serwisu API
+        self.api_service_combo = QComboBox()
+        self.api_service_combo.clear()
+        self.api_service_combo.addItems(["openstreetmap", "outdooractive"])
+        api_layout.addRow("Serwis API:", self.api_service_combo)
         
         # Region
-        region_layout = QVBoxLayout()
-        region_layout.addWidget(StyledLabel("Region:"))
-        self.region = StyledComboBox()
-        self.region.addItem("Wszystkie")
-        region_layout.addWidget(self.region)
-        filter_layout.addLayout(region_layout)
+        self.region_combo = QComboBox()
+        self.region_combo.setEditable(True)
+        self.region_combo.addItems(["Tatry", "Bieszczady", "Karkonosze", "Beskidy", "Góry Świętokrzyskie"])
+        api_layout.addRow("Region:", self.region_combo)
         
-        # Przycisk filtrowania
-        self.filter_btn = PrimaryButton("Zastosuj filtry")
-        filter_layout.addWidget(self.filter_btn)
+        # Przycisk pobierania
+        fetch_button_layout = QHBoxLayout()
+        api_layout.addRow("", fetch_button_layout)
         
-        # Dodanie karty filtrów do lewej kolumny
-        left_column.addWidget(filter_card)
+        fetch_button = QPushButton("Pobierz dane o trasach")
+        fetch_button.clicked.connect(self.fetch_trails_data)
+        fetch_button_layout.addWidget(fetch_button)
         
-        # Przyciski
-        buttons_layout = QVBoxLayout()
+        # Grupa filtrów tras
+        filter_group = QGroupBox("Filtrowanie danych")
+        layout.addWidget(filter_group)
+        filter_layout = QFormLayout(filter_group)
         
-        # Przyciski wczytywania
-        self.load_btn = BaseButton("Wczytaj dane o trasach")
-        buttons_layout.addWidget(self.load_btn)
+        # Filtr długości trasy - suwak
+        length_filter_layout = QHBoxLayout()
+        filter_layout.addRow("Długość trasy (km):", length_filter_layout)
         
-           # Przyciski operacji na danych
-        operations_card = CardFrame()
-        operations_layout = QVBoxLayout(operations_card)
-        operations_layout.setContentsMargins(15, 15, 15, 15)
-        operations_layout.setSpacing(10)
+        self.filter_min_length = QSlider(Qt.Orientation.Horizontal)
+        self.filter_min_length.setRange(0, 50)
+        self.filter_min_length.setValue(0)
+        length_filter_layout.addWidget(self.filter_min_length)
         
-        # Nagłówek operacji
-        operations_header = StyledLabel("Operacje na danych")
-        font = operations_header.font()
-        font.setBold(True)
-        operations_header.setFont(font)
-        operations_layout.addWidget(operations_header)
+        self.min_length_label = QLabel(f"{self.filter_min_length.value()}")
+        length_filter_layout.addWidget(self.min_length_label)
+        self.filter_min_length.valueChanged.connect(lambda v: self.min_length_label.setText(f"{v}"))
         
-        # Przycisk wczytywania danych
-        self.load_btn = BaseButton("Wczytaj dane pogodowe")
-        self.load_btn.setMinimumHeight(35)
-        operations_layout.addWidget(self.load_btn)
+        length_filter_layout.addWidget(QLabel("do"))
         
-        # Przyciski eksportu
-        export_layout = QHBoxLayout()
-        export_layout.setSpacing(10)
+        self.filter_max_length = QSlider(Qt.Orientation.Horizontal)
+        self.filter_max_length.setRange(0, 50)
+        self.filter_max_length.setValue(30)
+        length_filter_layout.addWidget(self.filter_max_length)
         
-        self.export_csv_btn = BaseButton("Eksportuj do CSV")
-        self.export_json_btn = BaseButton("Eksportuj do JSON")
-        self.export_csv_btn.setMinimumHeight(35)
-        self.export_json_btn.setMinimumHeight(35)
+        self.max_length_label = QLabel(f"{self.filter_max_length.value()}")
+        length_filter_layout.addWidget(self.max_length_label)
+        self.filter_max_length.valueChanged.connect(lambda v: self.max_length_label.setText(f"{v}"))
         
-        export_layout.addWidget(self.export_csv_btn)
-        export_layout.addWidget(self.export_json_btn)
-        operations_layout.addLayout(export_layout)
+        # Filtr przewyższenia
+        elevation_filter_layout = QHBoxLayout()
+        filter_layout.addRow("Przewyższenie (m):", elevation_filter_layout)
         
-        # Dodanie karty operacji do lewej kolumny
-        left_column.addWidget(operations_card)
-        left_column.addStretch()
+        self.filter_min_elevation = QSlider(Qt.Orientation.Horizontal)
+        self.filter_min_elevation.setRange(0, 2000)
+        self.filter_min_elevation.setValue(0)
+        elevation_filter_layout.addWidget(self.filter_min_elevation)
         
-        # Prawa kolumna - tabela z trasami
-        right_column = QVBoxLayout()
+        self.min_elevation_label = QLabel(f"{self.filter_min_elevation.value()}")
+        elevation_filter_layout.addWidget(self.min_elevation_label)
+        self.filter_min_elevation.valueChanged.connect(lambda v: self.min_elevation_label.setText(f"{v}"))
+        
+        elevation_filter_layout.addWidget(QLabel("do"))
+        
+        self.filter_max_elevation = QSlider(Qt.Orientation.Horizontal)
+        self.filter_max_elevation.setRange(0, 2000)
+        self.filter_max_elevation.setValue(1000)
+        elevation_filter_layout.addWidget(self.filter_max_elevation)
+        
+        self.max_elevation_label = QLabel(f"{self.filter_max_elevation.value()}")
+        elevation_filter_layout.addWidget(self.max_elevation_label)
+        self.filter_max_elevation.valueChanged.connect(lambda v: self.max_elevation_label.setText(f"{v}"))
+        
+        # Filtr poziomu trudności - suwak
+        difficulty_filter_layout = QHBoxLayout()
+        filter_layout.addRow("Poziom trudności:", difficulty_filter_layout)
+        
+        self.filter_min_difficulty = QSlider(Qt.Orientation.Horizontal)
+        self.filter_min_difficulty.setRange(1, 5)
+        self.filter_min_difficulty.setValue(1)
+        difficulty_filter_layout.addWidget(self.filter_min_difficulty)
+        
+        self.min_difficulty_label = QLabel(f"{self.filter_min_difficulty.value()}")
+        difficulty_filter_layout.addWidget(self.min_difficulty_label)
+        self.filter_min_difficulty.valueChanged.connect(lambda v: self.min_difficulty_label.setText(f"{v}"))
+        
+        difficulty_filter_layout.addWidget(QLabel("do"))
+        
+        self.filter_max_difficulty = QSlider(Qt.Orientation.Horizontal)
+        self.filter_max_difficulty.setRange(1, 5)
+        self.filter_max_difficulty.setValue(5)
+        difficulty_filter_layout.addWidget(self.filter_max_difficulty)
+        
+        self.max_difficulty_label = QLabel(f"{self.filter_max_difficulty.value()}")
+        difficulty_filter_layout.addWidget(self.max_difficulty_label)
+        self.filter_max_difficulty.valueChanged.connect(lambda v: self.max_difficulty_label.setText(f"{v}"))
+        
+        # Filtr regionu
+        self.filter_region_combo = QComboBox()
+        self.filter_region_combo.addItem("Wszystkie regiony")
+        filter_layout.addRow("Region:", self.filter_region_combo)
+        
+        # Filtr typu terenu
+        self.filter_terrain_combo = QComboBox()
+        self.filter_terrain_combo.addItem("Wszystkie tereny")
+        filter_layout.addRow("Typ terenu:", self.filter_terrain_combo)
+        
+        # Przyciski filtrowania
+        filter_buttons_layout = QHBoxLayout()
+        filter_layout.addRow("", filter_buttons_layout)
+        
+        self.filter_btn = QPushButton("Zastosuj filtry")
+        self.filter_btn.clicked.connect(self.apply_filters)
+        filter_buttons_layout.addWidget(self.filter_btn)
+        
+        self.reset_filter_btn = QPushButton("Resetuj filtry")
+        self.reset_filter_btn.clicked.connect(self.reset_filters)
+        filter_buttons_layout.addWidget(self.reset_filter_btn)
+        
+        # Tabela danych
+        table_label = QLabel("Dane tras:")
+        layout.addWidget(table_label)
         
         # Tabela tras
         self.trail_table = DataTable()
@@ -163,77 +177,114 @@ class TrailPage(QWidget):
             "Nazwa", "Region", "Długość (km)", "Trudność", "Teren", "Przewyższenie (m)"
         ])
         
-        right_column.addWidget(self.trail_table)
+        layout.addWidget(self.trail_table)
         
-        # Dodanie kolumn do głównego układu
-        content_layout.addLayout(left_column, 1)
-        content_layout.addLayout(right_column, 2)
+        # Statystyki
+        stats_group = QGroupBox("Statystyki")
+        layout.addWidget(stats_group)
+        stats_layout = QVBoxLayout(stats_group)
         
-        layout.addLayout(content_layout)
+        self.stats_label = QLabel("Brak danych")
+        stats_layout.addWidget(self.stats_label)
+        
+        # Przyciski eksportu i powrotu
+        buttons_layout = QHBoxLayout()
+        layout.addLayout(buttons_layout)
+        
+        buttons_layout.addStretch()
+        
+        close_button = QPushButton("Powrót")
+        close_button.clicked.connect(self.main_window.show_home_page)
+        buttons_layout.addWidget(close_button)
     
     def _connect_signals(self):
         """Połączenie sygnałów z slotami."""
-        self.load_btn.clicked.connect(self.load_data)
-        self.filter_btn.clicked.connect(self.apply_filters)
-        self.export_csv_btn.clicked.connect(self.export_to_csv)
-        self.export_json_btn.clicked.connect(self.export_to_json)
+        # Nie potrzeba już definiować połączeń, są już dodane w funkcji _setup_ui
+
+    def fetch_trails_data(self):
+        """Pobiera dane o trasach z API."""
+        service = self.api_service_combo.currentText()
+        region = self.region_combo.currentText()
         
-        if self.main_window:
-            self.back_btn.clicked.connect(self.main_window.show_home_page)
-    
-    def load_data(self):
-        """Wczytuje dane o trasach z pliku."""
-        filepath, _ = QFileDialog.getOpenFileName(
-            self,
-            "Wczytaj dane o trasach",
-            "",
-            "Pliki CSV (*.csv);;Pliki JSON (*.json)"
-        )
-        
-        if not filepath:
+        if service != "openstreetmap" and not self.main_window.api_client.api_keys.get(service):
+            self.main_window.show_error(
+                "Brak klucza API",
+                f"Nie skonfigurowano klucza API dla serwisu {service}. "
+                "Przejdź do menu Narzędzia > Konfiguracja API, aby dodać klucz."
+            )
             return
-        
+            
         try:
-            if filepath.endswith('.csv'):
-                self.trail_data.load_from_csv(filepath)
-            else:
-                self.trail_data.load_from_json(filepath)
+            # Pobieranie danych o trasach
+            trails = self.main_window.api_client.get_trails_data(service, region=region)
             
-            # Aktualizacja filtrów
-            self._update_filters()
+            if not trails:
+                self.main_window.show_info(
+                    "Brak danych",
+                    f"Nie znaleziono tras dla regionu {region}. Spróbuj użyć przykładowych danych."
+                )
+                return
+                
+            # Aktualizacja danych
+            self.main_window.trail_data.trails = trails
+            self.main_window.trail_data.filtered_trails = trails.copy()
             
-            # Aktualizacja tabeli
-            self._update_table()
+            # Aktualizacja interfejsu
+            self.update_data()
             
-            logger.info(f"Dane tras wczytane pomyślnie z pliku {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wczytane pomyślnie!")
+            self.main_window.show_info(
+                "Pobrano dane tras",
+                f"Pomyślnie pobrano {len(trails)} tras dla regionu {region}."
+            )
         except Exception as e:
-            logger.error(f"Błąd wczytywania danych tras: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wczytać danych: {str(e)}")
+            self.main_window.show_error(
+                "Błąd pobierania danych", 
+                f"Nie udało się pobrać danych o trasach: {str(e)}"
+            )
+            
+    def update_data(self):
+        """Aktualizuje wszystkie dane na stronie."""
+        self._update_filters()
+        self._update_table()
+        self._update_stats()
     
     def _update_filters(self):
         """Aktualizuje filtry na podstawie wczytanych danych."""
-        # Aktualizacja poziomu trudności
-        self.difficulty.clear()
-        self.difficulty.addItem("Wszystkie")
-        for level in self.trail_data.get_difficulty_levels():
-            self.difficulty.addItem(str(level))
-        
+        # Sprawdzenie, czy są dane
+        if not self.main_window.trail_data.trails:
+            return
+            
         # Aktualizacja regionów
-        self.region.clear()
-        self.region.addItem("Wszystkie")
-        for region in self.trail_data.get_regions():
-            self.region.addItem(region)
+        self.filter_region_combo.clear()
+        self.filter_region_combo.addItem("Wszystkie regiony")
+        regions = self.main_window.trail_data.get_regions()
+        self.filter_region_combo.addItems(regions)
+        
+        # Aktualizacja typów terenu
+        self.filter_terrain_combo.clear()
+        self.filter_terrain_combo.addItem("Wszystkie tereny")
+        terrain_types = self.main_window.trail_data.get_terrain_types()
+        self.filter_terrain_combo.addItems(terrain_types)
         
         # Aktualizacja zakresów długości
-        min_len, max_len = self.trail_data.get_length_range()
-        self.min_length.setRange(0, max_len)
-        self.max_length.setRange(0, max_len)
-        self.max_length.setValue(max_len)
+        min_len, max_len = self.main_window.trail_data.get_length_range()
+        self.filter_min_length.setRange(0, int(max_len) + 1)
+        self.filter_max_length.setRange(0, int(max_len) + 1)
+        self.filter_max_length.setValue(int(max_len))
+        self.min_length_label.setText(f"{self.filter_min_length.value()}")
+        self.max_length_label.setText(f"{self.filter_max_length.value()}")
+        
+        # Znajdowanie maksymalnego przewyższenia
+        max_elevation = max(trail.elevation_gain for trail in self.main_window.trail_data.trails)
+        self.filter_min_elevation.setRange(0, int(max_elevation) + 100)
+        self.filter_max_elevation.setRange(0, int(max_elevation) + 100)
+        self.filter_max_elevation.setValue(int(max_elevation))
+        self.min_elevation_label.setText(f"{self.filter_min_elevation.value()}")
+        self.max_elevation_label.setText(f"{self.filter_max_elevation.value()}")
     
     def _update_table(self):
         """Aktualizuje tabelę z trasami."""
-        trails = self.trail_data.filtered_trails
+        trails = self.main_window.trail_data.filtered_trails
         self.trail_table.setRowCount(len(trails))
         
         for i, trail in enumerate(trails):
@@ -250,79 +301,126 @@ class TrailPage(QWidget):
             # Przewyższenie
             self.trail_table.setItem(i, 5, QTableWidgetItem(f"{trail.elevation_gain:.0f}"))
     
+    def _update_stats(self):
+        """Aktualizuje statystyki na podstawie filtrowanych danych."""
+        if not self.main_window.trail_data.filtered_trails:
+            self.stats_label.setText("Brak danych")
+            return
+            
+        trails = self.main_window.trail_data.filtered_trails
+        total = len(trails)
+        avg_length = sum(t.length_km for t in trails) / total if total > 0 else 0
+        avg_elevation = sum(t.elevation_gain for t in trails) / total if total > 0 else 0
+        
+        regions = {}
+        difficulties = {}
+        terrain_types = {}
+        
+        for trail in trails:
+            regions[trail.region] = regions.get(trail.region, 0) + 1
+            difficulties[trail.difficulty] = difficulties.get(trail.difficulty, 0) + 1
+            terrain_types[trail.terrain_type] = terrain_types.get(trail.terrain_type, 0) + 1
+        
+        stats_text = f"Liczba tras: {total}\n"
+        stats_text += f"Średnia długość: {avg_length:.1f} km\n"
+        stats_text += f"Średnie przewyższenie: {avg_elevation:.0f} m\n"
+        
+        # Dodanie informacji o najczęstszym regionie
+        if regions:
+            most_common_region = max(regions.items(), key=lambda x: x[1])
+            stats_text += f"\nNajpopularniejszy region: {most_common_region[0]} ({most_common_region[1]} tras)"
+        
+        self.stats_label.setText(stats_text)
+        
     def apply_filters(self):
         """Stosuje filtry do danych o trasach."""
-        if not self.trail_data.trails:
+        if not self.main_window.trail_data.trails:
             logger.warn("Próba filtrowania pustych danych o trasach")
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do filtrowania!")
+            self.main_window.show_error("Ostrzeżenie", "Brak danych do filtrowania!")
             return
         
         # Resetowanie filtrów
-        self.trail_data.filtered_trails = self.trail_data.trails.copy()
+        self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()
         
         # Filtrowanie po długości
-        min_len = self.min_length.value()
-        max_len = self.max_length.value()
-        if min_len > 0 or max_len < self.max_length.maximum():
-            self.trail_data.filter_by_length(min_len, max_len)
+        min_len = self.filter_min_length.value()
+        max_len = self.filter_max_length.value()
+        self.main_window.trail_data.filtered_trails = [
+            trail for trail in self.main_window.trail_data.filtered_trails
+            if min_len <= trail.length_km <= max_len
+        ]
+        
+        # Filtrowanie po przewyższeniu
+        min_elev = self.filter_min_elevation.value()
+        max_elev = self.filter_max_elevation.value()
+        self.main_window.trail_data.filtered_trails = [
+            trail for trail in self.main_window.trail_data.filtered_trails
+            if min_elev <= trail.elevation_gain <= max_elev
+        ]
         
         # Filtrowanie po trudności
-        difficulty_text = self.difficulty.currentText()
-        if difficulty_text != "Wszystkie":
-            self.trail_data.filter_by_difficulty(int(difficulty_text))
+        min_diff = self.filter_min_difficulty.value()
+        max_diff = self.filter_max_difficulty.value()
+        self.main_window.trail_data.filtered_trails = [
+            trail for trail in self.main_window.trail_data.filtered_trails
+            if min_diff <= trail.difficulty <= max_diff
+        ]
         
         # Filtrowanie po regionie
-        region_text = self.region.currentText()
-        if region_text != "Wszystkie":
-            self.trail_data.filter_by_region(region_text)
+        region_text = self.filter_region_combo.currentText()
+        if region_text != "Wszystkie regiony":
+            self.main_window.trail_data.filtered_trails = [
+                trail for trail in self.main_window.trail_data.filtered_trails
+                if trail.region == region_text
+            ]
+        
+        # Filtrowanie po terenie
+        terrain_text = self.filter_terrain_combo.currentText()
+        if terrain_text != "Wszystkie tereny":
+            self.main_window.trail_data.filtered_trails = [
+                trail for trail in self.main_window.trail_data.filtered_trails
+                if trail.terrain_type == terrain_text
+            ]
+        
+        # Aktualizacja tabeli i statystyk
+        self._update_table()
+        self._update_stats()
+        
+        # Informacja w statusbarze
+        self.main_window.status_bar.showMessage(
+            f"Zastosowano filtry: znaleziono {len(self.main_window.trail_data.filtered_trails)} tras",
+            3000
+        )
+    
+    def reset_filters(self):
+        """Resetuje filtry i przywraca wszystkie dane."""
+        if not self.main_window.trail_data.trails:
+            return
+            
+        # Resetowanie kontrolek filtrów
+        self.filter_region_combo.setCurrentIndex(0)  # "Wszystkie regiony"
+        self.filter_terrain_combo.setCurrentIndex(0)  # "Wszystkie tereny"
+        
+        # Resetowanie suwaków
+        min_len, max_len = self.main_window.trail_data.get_length_range()
+        self.filter_min_length.setValue(0)
+        self.filter_max_length.setValue(int(max_len))
+        
+        # Resetowanie przewyższenia
+        max_elevation = max(trail.elevation_gain for trail in self.main_window.trail_data.trails)
+        self.filter_min_elevation.setValue(0)
+        self.filter_max_elevation.setValue(int(max_elevation))
+        
+        # Resetowanie trudności
+        self.filter_min_difficulty.setValue(1)
+        self.filter_max_difficulty.setValue(5)
+        
+        # Resetowanie filtrowanych tras
+        self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()
         
         # Aktualizacja tabeli
         self._update_table()
-    
-    def export_to_csv(self):
-        """Eksportuje dane do pliku CSV."""
-        if not self.trail_data.filtered_trails:
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
-            return
+        self._update_stats()
         
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Eksportuj do CSV",
-            "",
-            "Pliki CSV (*.csv)"
-        )
-        
-        if not filepath:
-            return
-        
-        try:
-            self.trail_data.save_to_csv(filepath)
-            logger.info(f"Dane tras wyeksportowane do pliku CSV: {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
-        except Exception as e:
-            logger.error(f"Błąd eksportu do CSV: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
-    
-    def export_to_json(self):
-        """Eksportuje dane do pliku JSON."""
-        if not self.trail_data.filtered_trails:
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do eksportu!")
-            return
-        
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Eksportuj do JSON",
-            "",
-            "Pliki JSON (*.json)"
-        )
-        
-        if not filepath:
-            return
-        
-        try:
-            self.trail_data.save_to_json(filepath)
-            logger.info(f"Dane tras wyeksportowane do pliku JSON: {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
-        except Exception as e:
-            logger.error(f"Błąd eksportu do JSON: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}") 
+        # Komunikat
+        self.main_window.status_bar.showMessage("Zresetowano filtry", 3000) 

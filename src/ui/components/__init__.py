@@ -10,6 +10,7 @@ from .inputs import (
 )
 from .tables import DataTable
 from .frames import CardFrame
+from .main_menu import MainMenu
 
 __all__ = [
     'StyledLabel',
@@ -17,5 +18,6 @@ __all__ = [
     'StyledComboBox', 'StyledSpinBox', 'StyledDoubleSpinBox',
     'StyledLineEdit', 'StyledDateEdit',
     'DataTable',
-    'CardFrame'
+    'CardFrame',
+    'MainMenu'
 ]

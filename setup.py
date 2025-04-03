@@ -8,6 +8,7 @@ setup(
     install_requires=[
         "PyQt6>=6.6.1",
         "colorama>=0.4.6",
+        "requests>=2.31.0",
     ],
     extras_require={
         "dev": [
