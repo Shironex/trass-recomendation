@@ -10,7 +10,7 @@ setup(
         "colorama>=0.4.6",
         "requests>=2.31.0",
         "pyqtgraph>=0.13.3",
-        "numpy>=1.26.0",
+        "numpy>=1.24.4",
     ],
     extras_require={
         "dev": [
