@@ -8,26 +8,26 @@ from PyQt6.QtWidgets import (
     QGroupBox, QCheckBox, QMessageBox, QFileDialog,
     QScrollArea, QFrame
 )
-from PyQt6.QtCore import pyqtSignal, QSettings, Qt
+from PyQt6.QtCore import pyqtSignal, Qt
 from src.core import ApiClient
+from src.config import Config
 
 
 class ApiSettingsDialog(QDialog):
     """Dialog konfiguracji API pogodowego i trasowego."""
     
     # Sygnał emitowany po zapisaniu konfiguracji
-    api_config_saved = pyqtSignal(dict)
+    api_config_saved = pyqtSignal(ApiClient)
     
-    def __init__(self, parent=None, settings=None):
+    def __init__(self, parent=None):
         """
         Inicjalizacja dialogu konfiguracji API.
         
         Args:
             parent: Rodzic widgetu.
-            settings: Obiekt QSettings do przechowywania konfiguracji.
         """
         super().__init__(parent)
-        self.settings = settings or QSettings("TrassRecommendation", "ApiSettings")
+        self.config = Config()
         self.api_widgets = {}
         
         self.setWindowTitle("Konfiguracja API")
@@ -239,7 +239,8 @@ class ApiSettingsDialog(QDialog):
         cache_layout.addWidget(cache_info)
         
         enable_cache = QCheckBox("Używaj pamięci podręcznej dla zapytań API")
-        enable_cache.setChecked(self.settings.value("cache/enabled", False, bool))
+        cache_settings = self.config.get_cache_settings()
+        enable_cache.setChecked(cache_settings["enabled"])
         cache_layout.addWidget(enable_cache)
         
         cache_dir_layout = QHBoxLayout()
@@ -249,7 +250,7 @@ class ApiSettingsDialog(QDialog):
         cache_dir_layout.addWidget(cache_dir_label)
         
         cache_dir_edit = QLineEdit()
-        cache_dir_edit.setText(self.settings.value("cache/directory", "", str))
+        cache_dir_edit.setText(cache_settings["directory"])
         cache_dir_layout.addWidget(cache_dir_edit)
         
         cache_dir_btn = QPushButton("Przeglądaj...")
@@ -280,35 +281,37 @@ class ApiSettingsDialog(QDialog):
         """Wczytuje zapisane ustawienia API."""
         for service_name, widget in self.api_widgets.items():
             if service_name not in ["cache_enabled", "cache_directory"]:
-                widget.setText(self.settings.value(f"api_keys/{service_name}", "", str))
+                widget.setText(self.config.get_api_key(service_name))
     
     def save_and_close(self):
         """Zapisuje ustawienia i zamyka dialog."""
         # Zapisz klucze API
+        api_keys = {}
         for service_name, widget in self.api_widgets.items():
             if service_name not in ["cache_enabled", "cache_directory"]:
-                if widget.text():
-                    self.settings.setValue(f"api_keys/{service_name}", widget.text())
+                key = widget.text()
+                self.config.set_api_key(service_name, key)
+                if key:
+                    api_keys[service_name] = key
         
         # Zapisz ustawienia pamięci podręcznej
-        self.settings.setValue("cache/enabled", self.api_widgets["cache_enabled"].isChecked())
-        self.settings.setValue("cache/directory", self.api_widgets["cache_directory"].text())
+        cache_enabled = self.api_widgets["cache_enabled"].isChecked()
+        cache_dir = self.api_widgets["cache_directory"].text()
         
-        # Przygotuj dane konfiguracyjne do przekazania
-        config_data = {
-            "api_keys": {
-                service: widget.text() 
-                for service, widget in self.api_widgets.items()
-                if service not in ["cache_enabled", "cache_directory"] and widget.text()
-            },
-            "cache": {
-                "enabled": self.api_widgets["cache_enabled"].isChecked(),
-                "directory": self.api_widgets["cache_directory"].text()
-            }
-        }
+        self.config.set_cache_settings(
+            enabled=cache_enabled,
+            directory=cache_dir
+        )
         
-        # Emituj sygnał z nowymi ustawieniami
-        self.api_config_saved.emit(config_data)
+        # Zapisz konfigurację
+        self.config.save()
+        
+        # Utwórz nowego klienta API
+        cache_dir = cache_dir if cache_enabled else None
+        api_client = ApiClient(api_keys, cache_dir)
+        
+        # Emituj sygnał z nowym klientem API
+        self.api_config_saved.emit(api_client)
         
         self.accept()
     

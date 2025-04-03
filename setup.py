@@ -11,6 +11,7 @@ setup(
         "requests>=2.31.0",
         "pyqtgraph>=0.13.3",
         "numpy>=1.24.4",
+        "cryptography>=41.0.0",
     ],
     extras_require={
         "dev": [

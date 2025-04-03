@@ -10,7 +10,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from ui.main import MainWindow
 from src.utils import logger, LogLevel
-
+from src.config import Config
 # Ścieżka do katalogu zasobów
 RESOURCES_DIR = Path("src/tools/resources") 
 
@@ -29,7 +29,8 @@ def try_enable_hot_reload():
 
 if __name__ == "__main__":
     # Parsowanie argumentów linii poleceń
-    parser = argparse.ArgumentParser(description="Rekomendator Tras Turystycznych")
+    config = Config()
+    parser = argparse.ArgumentParser(description=config.app_title)
     parser.add_argument("--hot-reload", action="store_true", help="Włącz hot reload (automatyczne przeładowanie przy zmianach)")
     parser.add_argument("--debug", action="store_true", help="Włącz tryb debugowania (więcej logów)")
     parser.add_argument("--hot-reload-level", action="store_true", help="Ustaw poziom logowania na HOT_RELOAD (logi hot reload i wyższe)")
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     else:
         logger.level = LogLevel.INFO
     
-    logger.info("Uruchamianie aplikacji Rekomendator Tras Turystycznych")
+    logger.info(f"Uruchamianie aplikacji {config.app_title}")
     
     # Włączenie hot reload, jeśli wybrano odpowiednią opcję
     reloader = None
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     try:
         # Specjalne ustawienie dla Windows
         import ctypes
-        myappid = 'TrassRecommendation.App.1.0'  # dowolny unikalny string
+        myappid = config.APP_NAME  # dowolny unikalny string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         logger.debug("Ustawiono AppUserModelID dla Windows")
     except Exception as e:

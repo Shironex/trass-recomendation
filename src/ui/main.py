@@ -9,13 +9,13 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QMessageBox, QMenuBar, QMenu, QStatusBar,
     QFileDialog
 )
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import Qt
 from src.ui.pages import ( HomePage, TrailPage, WeatherPage, RecommendationPage )
 from src.ui.api_settings_dialog import ApiSettingsDialog
 from src.ui.components import MainMenu
 from src.core import ( ApiClient, TrailData, WeatherData )
 from src.utils import logger
-
+from src.config import Config
 
 class MainWindow(QMainWindow):
     """Główne okno aplikacji."""
@@ -23,17 +23,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         """Inicjalizacja głównego okna aplikacji."""
         super().__init__()
-        
-        self.setWindowTitle("Rekomendator Tras Turystycznych")
+        self.config = Config()
+        self.setWindowTitle(self.config.app_title)
         self.setMinimumSize(900, 600)
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #1e1e1e;
             }
         """)
-        
-        # Inicjalizacja ustawień
-        self.settings = QSettings("TrassRecommendation", "MainApp")
         
         # Inicjalizacja klienta API
         self.api_client = self.initialize_api_client()
@@ -52,22 +49,20 @@ class MainWindow(QMainWindow):
         Returns:
             Obiekt ApiClient.
         """
-        # Wczytanie kluczy API
+        # Wczytanie kluczy API z konfiguracji
         api_keys = {}
-        settings = QSettings("TrassRecommendation", "ApiSettings")
         
         # Usługi pogodowe
         for service in ["openweathermap", "weatherapi", "visualcrossing"]:
-            api_key = settings.value(f"api_keys/{service}", "", str)
+            api_key = self.config.get_api_key(service)
             if api_key:
                 api_keys[service] = api_key
         
         # Konfiguracja pamięci podręcznej
         cache_dir = None
-        if settings.value("cache/enabled", False, bool):
-            cache_dir = settings.value("cache/directory", "", str)
-            if not cache_dir:
-                cache_dir = "./cache"
+        cache_settings = self.config.get_cache_settings()
+        if cache_settings["enabled"]:
+            cache_dir = cache_settings["directory"]
         
         logger.debug(f"Inicjalizacja klienta API z {len(api_keys)} kluczami")
         return ApiClient(api_keys, cache_dir)
@@ -327,25 +322,16 @@ class MainWindow(QMainWindow):
         dialog.api_config_saved.connect(self.update_api_client)
         dialog.exec()
     
-    def update_api_client(self, config_data):
+    def update_api_client(self, api_client):
         """
-        Aktualizuje klienta API na podstawie nowych ustawień.
+        Aktualizuje klienta API.
         
         Args:
-            config_data: Słownik z nowymi ustawieniami.
+            api_client: Nowy obiekt ApiClient.
         """
         logger.debug("Aktualizacja klienta API")
-        api_keys = config_data.get("api_keys", {})
-        
-        cache_dir = None
-        if config_data.get("cache", {}).get("enabled", False):
-            cache_dir = config_data.get("cache", {}).get("directory", "")
-            if not cache_dir:
-                cache_dir = "./cache"
-        
-        self.api_client = ApiClient(api_keys, cache_dir)
-        logger.info(f"Zaktualizowano klienta API z {len(api_keys)} kluczami")
-        
+        self.api_client = api_client
+        logger.info(f"Zaktualizowano klienta API z {len(api_client.api_keys)} kluczami")
         self.status_bar.showMessage("Zaktualizowano konfigurację API", 3000)
     
     def show_about(self):
