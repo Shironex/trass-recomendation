@@ -14,7 +14,7 @@ setup(
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
-            "watchdog>=6.0.0",
+            "watchdog>=4.0.2",
         ],
         "build": [
             "pyinstaller>=6.0.0",
