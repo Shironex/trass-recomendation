@@ -5,9 +5,10 @@ Dialog konfiguracji ustawień API dla pogody i tras turystycznych.
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTabWidget, QWidget, QFormLayout,
-    QGroupBox, QCheckBox, QMessageBox, QFileDialog
+    QGroupBox, QCheckBox, QMessageBox, QFileDialog,
+    QScrollArea, QFrame
 )
-from PyQt6.QtCore import pyqtSignal, QSettings
+from PyQt6.QtCore import pyqtSignal, QSettings, Qt
 from src.core import ApiClient
 
 
@@ -30,8 +31,8 @@ class ApiSettingsDialog(QDialog):
         self.api_widgets = {}
         
         self.setWindowTitle("Konfiguracja API")
-        self.setMinimumWidth(500)
-        self.setMinimumHeight(400)
+        self.setMinimumWidth(700)
+        self.setMinimumHeight(600)
         
         self.init_ui()
         self.load_saved_settings()
@@ -104,21 +105,138 @@ class ApiSettingsDialog(QDialog):
         
         self.api_widgets["visualcrossing"] = visualcrossing_key
         
-        # Informacja o przykładowych danych
-        example_group = QGroupBox("Informacja o trasach")
-        weather_layout.addWidget(example_group)
+        # Dodanie elastycznego odstępu na końcu
+        weather_layout.addStretch()
         
-        example_layout = QFormLayout(example_group)
-        example_label = QLabel("Funkcja pobierania tras z API została usunięta. " 
-                             "W przyszłej wersji zostanie zaimplementowane generowanie " 
-                             "danych o trasach za pomocą OpenAI.")
-        example_layout.addRow("", example_label)
+        # Zakładka informacji o API
+        info_tab = QWidget()
+        tab_widget.addTab(info_tab, "Informacje o API")
+        
+        info_layout = QVBoxLayout(info_tab)
+        
+        # Dodanie obszaru przewijania
+        info_scroll = QScrollArea()
+        info_scroll.setWidgetResizable(True)
+        info_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        info_layout.addWidget(info_scroll)
+        
+        info_content = QWidget()
+        info_content_layout = QVBoxLayout(info_content)
+        info_scroll.setWidget(info_content)
+        
+        # Sekcja OpenWeatherMap
+        owm_info = QGroupBox("OpenWeatherMap")
+        info_content_layout.addWidget(owm_info)
+        owm_info_layout = QVBoxLayout(owm_info)
+        owm_info_text = QLabel(
+            "<h3>OpenWeatherMap</h3>"
+            "<p>Popularny serwis pogodowy, idealny dla aplikacji miejskich.</p>"
+            "<p><b>Główne cechy:</b></p>"
+            "<ul>"
+            "<li>Darmowy plan: do 60 zapytań na minutę</li>"
+            "<li>Dane pogodowe z 5-dniową prognozą</li>"
+            "<li>Temperatura, opady, zachmurzenie, wiatr</li>"
+            "<li>Wysoka dokładność dla większych miast</li>"
+            "</ul>"
+            "<p><b>Jak zdobyć klucz API:</b></p>"
+            "<ol>"
+            "<li>Wejdź na stronę <a href='https://openweathermap.org/api'>OpenWeatherMap API</a></li>"
+            "<li>Zarejestruj się i zaloguj</li>"
+            "<li>Wybierz darmowy plan</li>"
+            "<li>Wygeneruj klucz API w panelu użytkownika</li>"
+            "</ol>"
+        )
+        owm_info_text.setWordWrap(True)
+        owm_info_text.setTextFormat(Qt.TextFormat.RichText)
+        owm_info_text.setOpenExternalLinks(True)
+        owm_info_layout.addWidget(owm_info_text)
+        
+        # Sekcja WeatherAPI
+        weatherapi_info = QGroupBox("WeatherAPI.com")
+        info_content_layout.addWidget(weatherapi_info)
+        weatherapi_info_layout = QVBoxLayout(weatherapi_info)
+        weatherapi_info_text = QLabel(
+            "<h3>WeatherAPI.com</h3>"
+            "<p>Nowoczesne API z bogatym zestawem funkcji i wysokim limitem zapytań.</p>"
+            "<p><b>Główne cechy:</b></p>"
+            "<ul>"
+            "<li>Darmowy plan: do 1,000,000 zapytań miesięcznie</li>"
+            "<li>14-dniowa prognoza pogody</li>"
+            "<li>Szczegółowe dane o temperaturze i opadach</li>"
+            "<li>Dane historyczne do 7 dni wstecz</li>"
+            "<li>Doskonała dokumentacja i wsparcie</li>"
+            "</ul>"
+            "<p><b>Jak zdobyć klucz API:</b></p>"
+            "<ol>"
+            "<li>Odwiedź stronę <a href='https://www.weatherapi.com/'>WeatherAPI.com</a></li>"
+            "<li>Kliknij 'Get Started Free'</li>"
+            "<li>Zarejestruj się i potwierdź email</li>"
+            "<li>Klucz API będzie dostępny w panelu użytkownika</li>"
+            "</ol>"
+        )
+        weatherapi_info_text.setWordWrap(True)
+        weatherapi_info_text.setTextFormat(Qt.TextFormat.RichText)
+        weatherapi_info_text.setOpenExternalLinks(True)
+        weatherapi_info_layout.addWidget(weatherapi_info_text)
+        
+        # Sekcja Visual Crossing
+        vc_info = QGroupBox("Visual Crossing Weather")
+        info_content_layout.addWidget(vc_info)
+        vc_info_layout = QVBoxLayout(vc_info)
+        vc_info_text = QLabel(
+            "<h3>Visual Crossing Weather</h3>"
+            "<p>Zaawansowane API pogodowe z dokładnymi prognozami długoterminowymi.</p>"
+            "<p><b>Główne cechy:</b></p>"
+            "<ul>"
+            "<li>Darmowy plan: 1000 zapytań dziennie</li>"
+            "<li>15-dniowa prognoza pogody</li>"
+            "<li>Szczegółowe dane meteorologiczne</li>"
+            "<li>Dostęp do danych historycznych</li>"
+            "<li>Zaawansowane metryki pogodowe</li>"
+            "</ul>"
+            "<p><b>Jak zdobyć klucz API:</b></p>"
+            "<ol>"
+            "<li>Wejdź na <a href='https://www.visualcrossing.com/weather-api'>Visual Crossing Weather API</a></li>"
+            "<li>Kliknij 'Sign Up For Free'</li>"
+            "<li>Wybierz darmowy plan</li>"
+            "<li>Po rejestracji otrzymasz klucz API</li>"
+            "</ol>"
+            "<p><b>Zalecenia:</b></p>"
+            "<ul>"
+            "<li>Najlepsza opcja dla dokładnych prognoz długoterminowych</li>"
+            "<li>Idealne do planowania tras w górach</li>"
+            "<li>Warto używać z pamięcią podręczną dla optymalizacji limitów</li>"
+            "</ul>"
+        )
+        vc_info_text.setWordWrap(True)
+        vc_info_text.setTextFormat(Qt.TextFormat.RichText)
+        vc_info_text.setOpenExternalLinks(True)
+        vc_info_layout.addWidget(vc_info_text)
+        
+        # Dodanie elastycznego odstępu
+        info_content_layout.addStretch()
         
         # Zakładka ustawień pamięci podręcznej
         cache_tab = QWidget()
         tab_widget.addTab(cache_tab, "Pamięć podręczna")
         
         cache_layout = QVBoxLayout(cache_tab)
+        
+        # Informacje o pamięci podręcznej
+        cache_info = QLabel(
+            "<h3>Pamięć podręczna API</h3>"
+            "<p>Włączenie pamięci podręcznej pozwala na:</p>"
+            "<ul>"
+            "<li>Szybszy dostęp do często używanych danych</li>"
+            "<li>Zmniejszenie liczby zapytań do API</li>"
+            "<li>Oszczędność limitu zapytań</li>"
+            "<li>Działanie aplikacji offline (dla zapisanych danych)</li>"
+            "</ul>"
+            "<p>Zalecane jest włączenie pamięci podręcznej i wybranie folderu na dysku lokalnym.</p>"
+        )
+        cache_info.setWordWrap(True)
+        cache_info.setTextFormat(Qt.TextFormat.RichText)
+        cache_layout.addWidget(cache_info)
         
         enable_cache = QCheckBox("Używaj pamięci podręcznej dla zapytań API")
         enable_cache.setChecked(self.settings.value("cache/enabled", False, bool))
@@ -140,6 +258,9 @@ class ApiSettingsDialog(QDialog):
         
         self.api_widgets["cache_enabled"] = enable_cache
         self.api_widgets["cache_directory"] = cache_dir_edit
+        
+        # Dodanie elastycznego odstępu
+        cache_layout.addStretch()
         
         # Przyciski OK/Anuluj
         button_layout = QHBoxLayout()

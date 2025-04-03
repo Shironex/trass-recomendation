@@ -356,7 +356,7 @@ class MainWindow(QMainWindow):
             """<h2>Rekomendator Tras Turystycznych</h2>
             <p>Wersja: 1.0.0</p>
             <p>System rekomendujący trasy turystyczne w oparciu o preferencje pogodowe.</p>
-            <p>© 2023-2024. Wszelkie prawa zastrzeżone.</p>"""
+            <p>© 2025. Wszelkie prawa zastrzeżone.</p>"""
         )
     
     def show_home_page(self):
