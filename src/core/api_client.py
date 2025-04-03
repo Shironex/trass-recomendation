@@ -13,6 +13,8 @@ from pathlib import Path
 from src.utils import logger
 from src.core.trail_data import TrailRecord
 from src.core.weather_data import WeatherRecord
+
+
 class ApiClient:
     """
     Klasa do komunikacji z zewnętrznymi API pogodowymi.
@@ -42,6 +44,7 @@ class ApiClient:
         # Jeśli podano katalog cache, upewnij się, że istnieje
         if self.cache_dir:
             os.makedirs(self.cache_dir, exist_ok=True)
+            logger.info(f"Utworzono katalog pamięci podręcznej: {self.cache_dir}")
         
         logger.debug("Inicjalizacja klienta API")
     
@@ -56,7 +59,6 @@ class ApiClient:
         self.api_keys[service] = api_key
         logger.debug(f"Ustawiono klucz API dla serwisu: {service}")
     
-    @lru_cache(maxsize=128)
     def get_weather_forecast(self, 
                             service: str, 
                             location: str, 
@@ -84,118 +86,77 @@ class ApiClient:
         if service not in self.api_keys:
             raise ValueError(f"Brak klucza API dla serwisu: {service}")
         
+        # Sprawdzenie cache przed wykonaniem zapytania
+        cache_key = f"{service}_{location}_{days}"
+        cached_data = self.load_api_response_from_cache(service, cache_key)
+        
+        if cached_data:
+            logger.info("Znaleziono dane w pamięci podręcznej")
+            try:
+                return self._parse_weather_data(service, cached_data)
+            except Exception as e:
+                logger.warning(f"Nie udało się przetworzyć danych z cache: {str(e)}")
+        
         # Wykonanie żądania do odpowiedniego API
         if service == "openweathermap":
-            return self._get_openweathermap_forecast(location, days)
+            data = self._get_openweathermap_forecast(location, days)
         elif service == "weatherapi":
-            return self._get_weatherapi_forecast(location, days)
+            data = self._get_weatherapi_forecast(location, days)
         elif service == "visualcrossing":
-            return self._get_visualcrossing_forecast(location, days)
+            data = self._get_visualcrossing_forecast(location, days)
         else:
             raise ValueError(f"Brak implementacji dla serwisu: {service}")
+        
+        # Zapisanie odpowiedzi do cache
+        if data:
+            self.save_api_response_to_cache(service, cache_key, data)
+        
+        return self._parse_weather_data(service, data)
     
-    def _get_openweathermap_forecast(self, location: str, days: int) -> List[WeatherRecord]:
+    def _parse_weather_data(self, service: str, data: Dict) -> List[WeatherRecord]:
         """
-        Pobiera prognozę pogody z OpenWeatherMap API.
+        Parsuje dane pogodowe z różnych serwisów do jednolitego formatu.
+        
+        Args:
+            service: Nazwa serwisu API.
+            data: Dane do sparsowania.
+            
+        Returns:
+            Lista obiektów WeatherRecord.
+        """
+        if service == "openweathermap":
+            return self._parse_openweathermap_data(data)
+        elif service == "weatherapi":
+            return self._parse_weatherapi_data(data)
+        elif service == "visualcrossing":
+            return self._parse_visualcrossing_data(data)
+        else:
+            raise ValueError(f"Brak implementacji parsera dla serwisu: {service}")
+    
+    def _get_openweathermap_forecast(self, location: str, days: int) -> Dict:
+        """
+        Pobiera prognozę pogody z OpenWeatherMap.
         
         Args:
             location: Nazwa lokalizacji lub współrzędne geograficzne.
             days: Liczba dni prognozy.
             
         Returns:
-            Lista obiektów WeatherRecord.
+            Słownik z danymi pogodowymi.
         """
         try:
             api_key = self.api_keys["openweathermap"]
-            
-            # Sprawdzenie, czy location to współrzędne geograficzne
-            if "," in location:
-                lat, lon = location.split(",")
-                # Używamy standardowego endpointu prognozy 5-dniowej zamiast godzinowej wersji Pro
-                url = f"{self.WEATHER_APIS['openweathermap']}/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-                logger.debug(f"Wysyłanie zapytania do OpenWeatherMap z współrzędnymi: {url}")
-            else:
-                # Używamy standardowego endpointu prognozy 5-dniowej zamiast godzinowej wersji Pro
-                url = f"{self.WEATHER_APIS['openweathermap']}/forecast?q={location}&appid={api_key}&units=metric"
-                logger.debug(f"Wysyłanie zapytania do OpenWeatherMap z lokalizacją: {url}")
+            url = f"{self.WEATHER_APIS['openweathermap']}/forecast?q={location}&appid={api_key}&units=metric"
             
             response = requests.get(url)
-            
-            # Wyrzuć wyjątek, jeśli wystąpił błąd HTTP
             response.raise_for_status()
-            data = response.json()
-            
-            # Konwersja danych do formatu WeatherRecord
-            weather_records = []
-            current_date = None
-            daily_data = {}
-            
-            # Posortuj dane według daty (mogą być nieuporządkowane)
-            sorted_forecasts = sorted(data["list"], key=lambda x: x["dt"])
-            
-            for item in sorted_forecasts:
-                forecast_date = datetime.fromtimestamp(item["dt"]).date()
-                
-                if current_date != forecast_date:
-                    if current_date and daily_data["count"] > 0:
-                        # Zapisz poprzedni dzień
-                        weather_records.append(
-                            WeatherRecord(
-                                date=current_date,
-                                location_id=location,
-                                avg_temp=daily_data["temp_sum"] / daily_data["count"],
-                                min_temp=daily_data["min_temp"],
-                                max_temp=daily_data["max_temp"],
-                                precipitation=daily_data["precipitation_sum"],
-                                sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
-                                cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
-                            )
-                        )
-                    
-                    # Zainicjuj nowy dzień
-                    current_date = forecast_date
-                    daily_data = {
-                        "temp_sum": 0,
-                        "min_temp": float('inf'),
-                        "max_temp": float('-inf'),
-                        "precipitation_sum": 0,
-                        "cloud_sum": 0,
-                        "count": 0
-                    }
-                
-                # Aktualizacja danych dziennych
-                temp = item["main"]["temp"]
-                daily_data["temp_sum"] += temp
-                daily_data["min_temp"] = min(daily_data["min_temp"], item["main"]["temp_min"])
-                daily_data["max_temp"] = max(daily_data["max_temp"], item["main"]["temp_max"])
-                daily_data["precipitation_sum"] += item.get("rain", {}).get("3h", 0)
-                daily_data["cloud_sum"] += item["clouds"]["all"]
-                daily_data["count"] += 1
-            
-            # Dodaj ostatni dzień
-            if current_date and daily_data["count"] > 0:
-                weather_records.append(
-                    WeatherRecord(
-                        date=current_date,
-                        location_id=location,
-                        avg_temp=daily_data["temp_sum"] / daily_data["count"],
-                        min_temp=daily_data["min_temp"],
-                        max_temp=daily_data["max_temp"],
-                        precipitation=daily_data["precipitation_sum"],
-                        sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
-                        cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
-                    )
-                )
-            
-            logger.info(f"Pobrano prognozę pogody dla {len(weather_records)} dni z OpenWeatherMap")
-            # Upewnij się, że zwracamy tylko tyle dni, ile zostało żądane (ale nie więcej niż mamy)
-            return weather_records[:min(days, len(weather_records))]
+            return response.json()
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z OpenWeatherMap: {str(e)}")
     
-    def _get_weatherapi_forecast(self, location: str, days: int) -> List[WeatherRecord]:
+    def _get_weatherapi_forecast(self, location: str, days: int) -> Dict:
         """
         Pobiera prognozę pogody z WeatherAPI.com.
         
@@ -204,7 +165,7 @@ class ApiClient:
             days: Liczba dni prognozy.
             
         Returns:
-            Lista obiektów WeatherRecord.
+            Słownik z danymi pogodowymi.
         """
         try:
             api_key = self.api_keys["weatherapi"]
@@ -212,132 +173,134 @@ class ApiClient:
             
             response = requests.get(url)
             response.raise_for_status()
-            data = response.json()
-            
-            weather_records = []
-            
-            for day in data["forecast"]["forecastday"]:
-                forecast_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
-                weather_records.append(
-                    WeatherRecord(
-                        date=forecast_date,
-                        location_id=location,
-                        avg_temp=day["day"]["avgtemp_c"],
-                        min_temp=day["day"]["mintemp_c"],
-                        max_temp=day["day"]["maxtemp_c"],
-                        precipitation=day["day"]["totalprecip_mm"],
-                        sunshine_hours=24 - (day["day"]["daily_will_it_rain"] * 24 * day["day"]["daily_chance_of_rain"] / 100),
-                        cloud_cover=int(sum(hour["cloud"] for hour in day["hour"]) / 24)
-                    )
-                )
-            
-            logger.info(f"Pobrano prognozę pogody dla {len(weather_records)} dni")
-            return weather_records
+            return response.json()
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z WeatherAPI: {str(e)}")
     
-    def _get_visualcrossing_forecast(self, location: str, days: int) -> List[WeatherRecord]:
+    def _get_visualcrossing_forecast(self, location: str, days: int) -> Dict:
         """
-        Pobiera prognozę pogody z Visual Crossing Weather API.
+        Pobiera prognozę pogody z Visual Crossing Weather.
         
         Args:
             location: Nazwa lokalizacji lub współrzędne geograficzne.
             days: Liczba dni prognozy.
             
         Returns:
-            Lista obiektów WeatherRecord.
+            Słownik z danymi pogodowymi.
         """
         try:
             api_key = self.api_keys["visualcrossing"]
-            url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}/next{days}days?unitGroup=metric&key={api_key}"
+            url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}/{days}days?key={api_key}&unitGroup=metric"
             
             response = requests.get(url)
             response.raise_for_status()
-            data = response.json()
-            
-            weather_records = []
-            
-            for day in data["days"]:
-                forecast_date = datetime.strptime(day["datetime"], "%Y-%m-%d").date()
-                weather_records.append(
-                    WeatherRecord(
-                        date=forecast_date,
-                        location_id=location,
-                        avg_temp=day["temp"],
-                        min_temp=day["tempmin"],
-                        max_temp=day["tempmax"],
-                        precipitation=day["precip"],
-                        sunshine_hours=day.get("sunhours", 12.0 - day["cloudcover"] * 0.12),
-                        cloud_cover=int(day["cloudcover"])
-                    )
-                )
-            
-            logger.info(f"Pobrano prognozę pogody dla {len(weather_records)} dni")
-            return weather_records
+            return response.json()
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z Visual Crossing: {str(e)}")
     
-    def _generate_example_trails(self, region: Optional[str], difficulty: Optional[int]) -> List[TrailRecord]:
+    def _parse_openweathermap_data(self, data: Dict) -> List[WeatherRecord]:
         """
-        Generuje przykładowe dane o trasach.
+        Parsuje dane z OpenWeatherMap.
         
         Args:
-            region: Opcjonalny region do filtrowania tras.
-            difficulty: Opcjonalny poziom trudności do filtrowania tras.
+            data: Surowe dane z API OpenWeatherMap.
             
         Returns:
-            Lista wygenerowanych obiektów TrailRecord.
+            Lista obiektów WeatherRecord.
         """
-        region = region or "Polska"
-        logger.info(f"Generowanie przykładowych tras dla regionu {region}")
+        weather_records = []
+        current_date = None
+        daily_data = {}
         
-        trails = []
-        trail_types = ["górski", "leśny", "nizinny", "miejski", "mieszany"]
+        # Posortuj dane według daty (mogą być nieuporządkowane)
+        sorted_forecasts = sorted(data["list"], key=lambda x: x["dt"])
         
-        # Lista przykładowych nazw tras
-        trail_names = [
-            f"Szlak {region} Północny",
-            f"Szlak {region} Południowy",
-            f"Trasa widokowa {region}",
-            f"Ścieżka przyrodnicza {region}",
-            f"Główny szlak {region}",
-            f"Szlak wokół {region}",
-            f"Mała pętla {region}",
-            f"Duża pętla {region}",
-            f"Trasa historyczna {region}",
-            f"Szlak wodny {region}"
-        ]
-        
-        # Wygeneruj 5-10 przykładowych tras
-        num_trails = min(len(trail_names), 10)
-        
-        for i in range(num_trails):
-            trail_difficulty = difficulty if difficulty else (i % 5) + 1
+        for item in sorted_forecasts:
+            forecast_date = datetime.fromtimestamp(item["dt"]).date()
             
-            trails.append(
-                TrailRecord(
-                    id=f"EXAMPLE{i+1}",
-                    name=trail_names[i] if i < len(trail_names) else f"Przykładowa trasa {i+1} w {region}",
-                    region=region,
-                    start_lat=50.0 + (i*0.1),
-                    start_lon=19.0 + (i*0.1),
-                    end_lat=50.0 + (i*0.15),
-                    end_lon=19.0 + (i*0.15),
-                    length_km=5.0 + (i * 2.5),
-                    elevation_gain=50.0 + (i * 50.0),
-                    difficulty=trail_difficulty,
-                    terrain_type=trail_types[i % len(trail_types)],
-                    tags=["przykładowy", "wygenerowany"]
+            if current_date != forecast_date:
+                if current_date and daily_data["count"] > 0:
+                    # Zapisz poprzedni dzień
+                    weather_records.append(
+                        WeatherRecord(
+                            date=current_date,
+                            location_id=data["city"]["name"],
+                            avg_temp=daily_data["temp_sum"] / daily_data["count"],
+                            min_temp=daily_data["min_temp"],
+                            max_temp=daily_data["max_temp"],
+                            precipitation=daily_data["precipitation_sum"],
+                            sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
+                            cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
+                        )
+                    )
+                
+                # Zainicjuj nowy dzień
+                current_date = forecast_date
+                daily_data = {
+                    "temp_sum": 0,
+                    "min_temp": float('inf'),
+                    "max_temp": float('-inf'),
+                    "precipitation_sum": 0,
+                    "cloud_sum": 0,
+                    "count": 0
+                }
+            
+            # Aktualizacja danych dziennych
+            temp = item["main"]["temp"]
+            daily_data["temp_sum"] += temp
+            daily_data["min_temp"] = min(daily_data["min_temp"], item["main"]["temp_min"])
+            daily_data["max_temp"] = max(daily_data["max_temp"], item["main"]["temp_max"])
+            daily_data["precipitation_sum"] += item.get("rain", {}).get("3h", 0)
+            daily_data["cloud_sum"] += item["clouds"]["all"]
+            daily_data["count"] += 1
+        
+        # Dodaj ostatni dzień
+        if current_date and daily_data["count"] > 0:
+            weather_records.append(
+                WeatherRecord(
+                    date=current_date,
+                    location_id=data["city"]["name"],
+                    avg_temp=daily_data["temp_sum"] / daily_data["count"],
+                    min_temp=daily_data["min_temp"],
+                    max_temp=daily_data["max_temp"],
+                    precipitation=daily_data["precipitation_sum"],
+                    sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
+                    cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
                 )
             )
         
-        logger.info(f"Wygenerowano {len(trails)} przykładowych tras")
-        return trails
-
+        logger.info(f"Sparsowano prognozę pogody dla {len(weather_records)} dni z OpenWeatherMap")
+        return weather_records
+    
+    def _parse_weatherapi_data(self, data: Dict) -> List[WeatherRecord]:
+        """Parsuje dane z WeatherAPI.com."""
+        weather_records = []
+        for day in data["forecast"]["forecastday"]:
+            forecast_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
+            weather_records.append(
+                WeatherRecord(
+                    date=forecast_date,
+                    location_id=data["location"]["name"],
+                    avg_temp=day["day"]["avgtemp_c"],
+                    min_temp=day["day"]["mintemp_c"],
+                    max_temp=day["day"]["maxtemp_c"],
+                    precipitation=day["day"]["totalprecip_mm"],
+                    sunshine_hours=24 - (day["day"]["daily_will_it_rain"] * 24 * day["day"]["daily_chance_of_rain"] / 100),
+                    cloud_cover=int(sum(hour["cloud"] for hour in day["hour"]) / 24)
+                )
+            )
+        return weather_records
+    
+    def _parse_visualcrossing_data(self, data: Dict) -> List[WeatherRecord]:
+        """Parsuje dane z Visual Crossing Weather."""
+        weather_records = []
+        # Implementacja parsowania danych z Visual Crossing
+        return weather_records
+    
     def save_api_response_to_cache(self, service: str, query: str, data: Dict) -> None:
         """
         Zapisuje odpowiedź API do pamięci podręcznej.
