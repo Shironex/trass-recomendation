@@ -72,12 +72,12 @@ class ColorLogger:
 
     def debug(self, message):
         """
-        Logowanie na poziomie DEBUG (niebieski).
+        Logowanie na poziomie DEBUG (jasny fioletowy).
         
         Args:
             message (str): Treść wiadomości
         """
-        self._log(LogLevel.DEBUG, self.COLORS["BLUE"], "[DEBUG]", message)
+        self._log(LogLevel.DEBUG, self.COLORS["MAGENTA"], "[DEBUG]", message)
 
     def info(self, message):
         """

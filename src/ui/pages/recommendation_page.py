@@ -4,15 +4,15 @@ Strona rekomendacji tras turystycznych.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QGridLayout,
-    QTableWidgetItem, QScrollArea, QFileDialog, QFrame
+    QScrollArea, QFileDialog, QFrame
 )
-from PyQt6.QtCore import Qt, QDate, QTimer, QEventLoop
+from PyQt6.QtCore import Qt, QTimer, QEventLoop
 import traceback
 import sys
 sys.path.append('.')
 from src.ui.components import (
     StyledLabel, BaseButton, PrimaryButton, StyledComboBox,
-    StyledDoubleSpinBox, StyledDateEdit, DataTable, CardFrame
+    StyledDoubleSpinBox, StyledDateEdit, CardFrame
 )
 from src.core.trail_data import TrailData
 from src.core.weather_data import WeatherData

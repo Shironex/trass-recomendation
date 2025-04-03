@@ -5,11 +5,9 @@ Główny moduł interfejsu użytkownika aplikacji Rekomendator Tras Turystycznyc
 import sys
 sys.path.append('.')
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QMainWindow, QWidget, QVBoxLayout,
     QStackedWidget, QMessageBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
 from src.ui.pages.home_page import HomePage
 from src.ui.pages.trail_page import TrailPage
 from src.ui.pages.weather_page import WeatherPage
