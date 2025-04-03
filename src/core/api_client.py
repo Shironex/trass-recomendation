@@ -5,16 +5,14 @@ turystycznych i danych pogodowych.
 
 import json
 import requests
+import os
 from typing import Dict, List, Optional
-from datetime import date, datetime
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-import os
-
-from src.utils.logger import logger
+from src.utils import logger
 from src.core.trail_data import TrailRecord
 from src.core.weather_data import WeatherRecord
-
 class ApiClient:
     """
     Klasa do komunikacji z zewnętrznymi API pogodowymi.

@@ -11,6 +11,10 @@ from .inputs import (
 from .tables import DataTable
 from .frames import CardFrame
 from .main_menu import MainMenu
+from .filter_group import FilterGroup
+from .data_form import DataForm
+from .stats_display import StatsDisplay
+from .result_card import ResultCard
 
 __all__ = [
     'StyledLabel',
@@ -19,5 +23,9 @@ __all__ = [
     'StyledLineEdit', 'StyledDateEdit',
     'DataTable',
     'CardFrame',
-    'MainMenu'
+    'MainMenu',
+    'FilterGroup',
+    'DataForm',
+    'StatsDisplay',
+    'ResultCard'
 ]

@@ -4,22 +4,17 @@ Strona rekomendacji tras turystycznych.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QGridLayout,
-    QScrollArea, QFileDialog, QFrame, QGroupBox, QFormLayout, QDateEdit,
-    QPushButton, QComboBox, QSlider, QLabel, QTableWidget, QHeaderView,
-    QDoubleSpinBox
+    QScrollArea, QFileDialog, QPushButton, QLabel
 )
-from PyQt6.QtCore import Qt, QTimer, QEventLoop, QDate
+from PyQt6.QtCore import Qt, QTimer, QEventLoop
 import traceback
 import sys
 sys.path.append('.')
-from src.ui.components import (
-    StyledLabel, BaseButton, PrimaryButton, StyledComboBox,
-    StyledDoubleSpinBox, StyledDateEdit, CardFrame
-)
-from src.core.trail_data import TrailData
-from src.core.weather_data import WeatherData
-from src.core.data_processor import RouteRecommender
+from src.core import ( TrailData, WeatherData, RouteRecommender )
 from src.utils import logger
+from src.ui.components import (
+    StyledLabel, DataForm, ResultCard
+)
 
 
 class RecommendationPage(QWidget):
@@ -32,6 +27,7 @@ class RecommendationPage(QWidget):
         self.trail_data = TrailData()
         self.weather_data = WeatherData()
         self.recommender = None
+        self.result_cards = []
         self._setup_ui()
         self._connect_signals()
     
@@ -43,23 +39,21 @@ class RecommendationPage(QWidget):
         main_layout.setSpacing(20)
         
         # Tytuł strony
-        title_label = QLabel("Rekomendacje Tras Turystycznych")
-        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        title_label = StyledLabel("Rekomendacje Tras Turystycznych", is_title=True)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
         
         # Grupa danych
-        data_group = QGroupBox("Dane")
-        main_layout.addWidget(data_group)
-        data_layout = QFormLayout(data_group)
+        self.data_form = DataForm("Dane", self)
+        main_layout.addWidget(self.data_form)
         
         # Przyciski ładowania danych
-        data_btn_layout = QHBoxLayout()
-        self.load_trails_btn = QPushButton("Wczytaj dane o trasach")
-        self.load_weather_btn = QPushButton("Wczytaj dane pogodowe") 
-        data_btn_layout.addWidget(self.load_trails_btn)
-        data_btn_layout.addWidget(self.load_weather_btn)
-        data_layout.addRow("", data_btn_layout)
+        load_buttons = self.data_form.add_buttons_row({
+            "load_trails": "Wczytaj dane o trasach",
+            "load_weather": "Wczytaj dane pogodowe"
+        })
+        self.load_trails_btn = load_buttons["load_trails"]
+        self.load_weather_btn = load_buttons["load_weather"]
         
         # Status danych
         status_layout = QGridLayout()
@@ -70,7 +64,7 @@ class RecommendationPage(QWidget):
         status_layout.addWidget(QLabel("Dane pogodowe:"), 1, 0)
         self.weather_status = QLabel("Nie wczytano")
         status_layout.addWidget(self.weather_status, 1, 1)
-        data_layout.addRow("Status:", status_layout)
+        self.data_form.form_layout.addRow("Status:", status_layout)
         
         # Sekcja parametrów wyszukiwania
         main_content = QHBoxLayout()
@@ -80,96 +74,88 @@ class RecommendationPage(QWidget):
         left_column = QVBoxLayout()
         
         # Grupa parametrów tras
-        trail_params_group = QGroupBox("Parametry tras")
-        trail_params_layout = QFormLayout(trail_params_group)
+        self.trail_params_form = DataForm("Parametry tras", self)
         
         # Długość trasy
-        length_layout = QHBoxLayout()
-        length_layout.addWidget(QLabel("Min:"))
-        self.min_length = QDoubleSpinBox()
-        self.min_length.setRange(0, 1000)
-        length_layout.addWidget(self.min_length)
-        
-        length_layout.addWidget(QLabel("Max:"))
-        self.max_length = QDoubleSpinBox()
-        self.max_length.setRange(0, 1000)
-        self.max_length.setValue(50)
-        length_layout.addWidget(self.max_length)
-        trail_params_layout.addRow("Długość trasy (km):", length_layout)
+        self.min_length, self.max_length = self.trail_params_form.add_number_range(
+            "length",
+            "Długość trasy (km)",
+            min_value=0,
+            max_value=1000,
+            default_min=0,
+            default_max=50
+        )
         
         # Poziom trudności
-        self.difficulty = QComboBox()
-        self.difficulty.addItem("Wszystkie")
-        for i in range(1, 6):
-            self.difficulty.addItem(str(i))
-        trail_params_layout.addRow("Poziom trudności:", self.difficulty)
+        self.difficulty = self.trail_params_form.add_combo_field(
+            "difficulty",
+            "Poziom trudności",
+            ["Wszystkie", "1", "2", "3", "4", "5"]
+        )
         
         # Region
-        self.region = QComboBox()
-        self.region.addItem("Wszystkie")
-        trail_params_layout.addRow("Region:", self.region)
+        self.region = self.trail_params_form.add_combo_field(
+            "region",
+            "Region",
+            ["Wszystkie"]
+        )
         
-        left_column.addWidget(trail_params_group)
+        left_column.addWidget(self.trail_params_form)
         
         # Grupa preferencji pogodowych
-        weather_prefs_group = QGroupBox("Preferencje pogodowe")
-        weather_prefs_layout = QFormLayout(weather_prefs_group)
+        self.weather_params_form = DataForm("Preferencje pogodowe", self)
         
         # Temperatura
-        temp_layout = QHBoxLayout()
-        temp_layout.addWidget(QLabel("Min:"))
-        self.min_temp = QDoubleSpinBox()
-        self.min_temp.setRange(-20, 40)
-        self.min_temp.setValue(15)
-        temp_layout.addWidget(self.min_temp)
+        self.min_temp, self.max_temp = self.weather_params_form.add_number_range(
+            "temp",
+            "Temperatura (°C)",
+            min_value=-20,
+            max_value=40,
+            default_min=15,
+            default_max=25
+        )
         
-        temp_layout.addWidget(QLabel("Max:"))
-        self.max_temp = QDoubleSpinBox()
-        self.max_temp.setRange(-20, 40)
-        self.max_temp.setValue(25)
-        temp_layout.addWidget(self.max_temp)
-        weather_prefs_layout.addRow("Temperatura (°C):", temp_layout)
+        # Opady
+        self.min_precip, self.max_precip = self.weather_params_form.add_number_range(
+            "precip",
+            "Opady (mm)",
+            min_value=0,
+            max_value=100,
+            default_min=0,
+            default_max=5
+        )
         
-        # Maksymalne opady
-        self.max_precip = QDoubleSpinBox()
-        self.max_precip.setRange(0, 100)
-        self.max_precip.setValue(5)
-        weather_prefs_layout.addRow("Maksymalne opady (mm):", self.max_precip)
-        
-        # Minimalne nasłonecznienie
-        self.min_sunshine = QDoubleSpinBox()
-        self.min_sunshine.setRange(0, 24)
-        self.min_sunshine.setValue(4)
-        weather_prefs_layout.addRow("Min. nasłonecznienie (h):", self.min_sunshine)
+        # Nasłonecznienie
+        self.min_sunshine, self.max_sunshine = self.weather_params_form.add_number_range(
+            "sunshine",
+            "Nasłonecznienie (h)",
+            min_value=0,
+            max_value=24,
+            default_min=4,
+            default_max=12
+        )
         
         # Zakres dat
-        date_layout = QHBoxLayout()
+        self.start_date, self.end_date = self.weather_params_form.add_date_range(
+            "date_range",
+            "Planowany termin",
+            default_start_days=0,
+            default_end_days=7
+        )
         
-        date_layout.addWidget(QLabel("Od:"))
-        self.start_date = QDateEdit()
-        self.start_date.setCalendarPopup(True)
-        date_layout.addWidget(self.start_date)
-        
-        date_layout.addWidget(QLabel("Do:"))
-        self.end_date = QDateEdit()
-        self.end_date.setCalendarPopup(True)
-        self.end_date.setDate(self.end_date.date().addDays(7))
-        date_layout.addWidget(self.end_date)
-        
-        weather_prefs_layout.addRow("Planowany termin:", date_layout)
-        
-        left_column.addWidget(weather_prefs_group)
+        left_column.addWidget(self.weather_params_form)
         
         # Przycisk generowania rekomendacji
         self.recommend_btn = QPushButton("Generuj rekomendacje")
         self.recommend_btn.setMinimumHeight(35)
+        self.recommend_btn.clicked.connect(self.generate_recommendations)
         left_column.addWidget(self.recommend_btn)
         
         # Prawa kolumna - wyniki
         right_column = QVBoxLayout()
         
         # Tabela wyników - zastąpimy ją layoutem z przewijaniem
-        results_label = QLabel("Rekomendowane trasy:")
+        results_label = StyledLabel("Rekomendowane trasy:", is_title=False)
         right_column.addWidget(results_label)
         
         # Obszar przewijania dla wyników
@@ -213,7 +199,6 @@ class RecommendationPage(QWidget):
         """Połączenie sygnałów z slotami."""
         self.load_trails_btn.clicked.connect(self.load_trail_data)
         self.load_weather_btn.clicked.connect(self.load_weather_data)
-        self.recommend_btn.clicked.connect(self.generate_recommendations)
     
     def load_trail_data(self):
         """Wczytuje dane o trasach z pliku."""
@@ -506,90 +491,15 @@ class RecommendationPage(QWidget):
             self.results_layout.insertWidget(1, summary_label)
             
             # Dodawanie kart dla każdej rekomendacji
+            self.result_cards = []
             for i, rec in enumerate(recommendations):
                 # Tworzenie karty dla rekomendacji
-                card = QGroupBox()
-                card_layout = QVBoxLayout(card)
-                card_layout.setContentsMargins(15, 15, 15, 15)
-                card_layout.setSpacing(8)
-                
-                # Nagłówek z numerem i nazwą
-                header_layout = QHBoxLayout()
-                rank_label = QLabel(f"#{i+1}.")
-                rank_font = rank_label.font()
-                rank_font.setBold(True)
-                rank_font.setPointSize(14)
-                rank_label.setFont(rank_font)
-                
-                name_label = QLabel(rec['name'])
-                name_font = name_label.font()
-                name_font.setBold(True)
-                name_font.setPointSize(14)
-                name_label.setFont(name_font)
-                
-                header_layout.addWidget(rank_label)
-                header_layout.addWidget(name_label)
-                header_layout.addStretch()
-                
-                # Ocena
-                score_label = QLabel(f"{rec['total_score']:.1f}/100")
-                score_font = score_label.font()
-                score_font.setBold(True)
-                score_font.setPointSize(14)
-                score_label.setFont(score_font)
-                header_layout.addWidget(score_label)
-                
-                card_layout.addLayout(header_layout)
-                
-                # Separator
-                line = QFrame()
-                line.setFrameShape(QFrame.Shape.HLine)
-                line.setFrameShadow(QFrame.Shadow.Sunken)
-                card_layout.addWidget(line)
-                
-                # Informacje o trasie
-                info_layout = QGridLayout()
-                info_layout.setVerticalSpacing(8)
-                info_layout.setHorizontalSpacing(15)
-                
-                # Region
-                info_layout.addWidget(QLabel("Region:"), 0, 0)
-                region_label = QLabel(rec['region'])
-                region_font = region_label.font()
-                region_font.setBold(True)
-                region_label.setFont(region_font)
-                info_layout.addWidget(region_label, 0, 1)
-                
-                # Długość
-                info_layout.addWidget(QLabel("Długość:"), 1, 0)
-                length_label = QLabel(f"{rec['length_km']:.1f} km")
-                length_font = length_label.font()
-                length_font.setBold(True)
-                length_label.setFont(length_font)
-                info_layout.addWidget(length_label, 1, 1)
-                
-                # Trudność
-                info_layout.addWidget(QLabel("Trudność:"), 0, 2)
-                difficulty_label = QLabel(str(rec['difficulty']))
-                difficulty_font = difficulty_label.font()
-                difficulty_font.setBold(True)
-                difficulty_label.setFont(difficulty_font)
-                info_layout.addWidget(difficulty_label, 0, 3)
-                
-                # Typ terenu
-                if 'terrain_type' in rec and rec['terrain_type']:
-                    info_layout.addWidget(QLabel("Typ terenu:"), 1, 2)
-                    info_layout.addWidget(QLabel(rec['terrain_type']), 1, 3)
-                
-                # Przewyższenie
-                if 'elevation_gain' in rec and rec['elevation_gain']:
-                    info_layout.addWidget(QLabel("Przewyższenie:"), 2, 0)
-                    info_layout.addWidget(QLabel(f"{rec['elevation_gain']} m"), 2, 1)
-                
-                card_layout.addLayout(info_layout)
+                card = ResultCard(self)
+                card.set_data(rec, i+1)
                 
                 # Dodanie karty do układu wyników
                 self.results_layout.insertWidget(i + 2, card)
+                self.result_cards.append(card)
             
             # Dodanie stretch na końcu, aby zachować spójność układu
             self.results_layout.addStretch()
@@ -620,4 +530,7 @@ class RecommendationPage(QWidget):
                     widget.deleteLater()
                 else:
                     # Jeśli to nie widget (np. stretch), usuń również
-                    self.results_layout.removeItem(item) 
+                    self.results_layout.removeItem(item)
+        
+        # Czyścimy listę kart
+        self.result_cards = [] 

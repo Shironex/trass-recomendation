@@ -3,16 +3,15 @@ Strona zarządzania trasami aplikacji Rekomendator Tras Turystycznych.
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QTableWidgetItem,
-    QLabel, QGroupBox, QPushButton, QComboBox, QSlider, QFormLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QTableWidgetItem,
+    QLabel, QPushButton
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt
 
 import sys
 sys.path.append('.')
 from src.ui.components import (
-    StyledLabel, BaseButton, PrimaryButton, StyledComboBox,
-    StyledDoubleSpinBox, DataTable, CardFrame
+    StyledLabel, DataTable, FilterGroup, StatsDisplay
 )
 from src.utils import logger
 
@@ -37,108 +36,50 @@ class TrailPage(QWidget):
         
         # Tytuł strony
         title_label = StyledLabel("Zarządzanie Trasami", is_title=True)
-        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
         # Grupa filtrów tras
-        filter_group = QGroupBox("Filtrowanie danych")
-        layout.addWidget(filter_group)
-        filter_layout = QFormLayout(filter_group)
+        self.filter_group = FilterGroup("Filtrowanie danych", self)
+        self.filter_group.filterApplied.connect(self.apply_filters)
+        self.filter_group.filterReset.connect(self.reset_filters)
+        layout.addWidget(self.filter_group)
         
         # Filtr długości trasy - suwak
-        length_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Długość trasy (km):", length_filter_layout)
-        
-        self.filter_min_length = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_length.setRange(0, 50)
-        self.filter_min_length.setValue(0)
-        length_filter_layout.addWidget(self.filter_min_length)
-        
-        self.min_length_label = QLabel(f"{self.filter_min_length.value()}")
-        length_filter_layout.addWidget(self.min_length_label)
-        self.filter_min_length.valueChanged.connect(lambda v: self.min_length_label.setText(f"{v}"))
-        
-        length_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_length = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_length.setRange(0, 50)
-        self.filter_max_length.setValue(30)
-        length_filter_layout.addWidget(self.filter_max_length)
-        
-        self.max_length_label = QLabel(f"{self.filter_max_length.value()}")
-        length_filter_layout.addWidget(self.max_length_label)
-        self.filter_max_length.valueChanged.connect(lambda v: self.max_length_label.setText(f"{v}"))
+        self.filter_min_length, self.filter_max_length = self.filter_group.add_slider_filter(
+            "length",
+            "Długość trasy",
+            0, 50, 0, 30,
+            " km"
+        )
         
         # Filtr przewyższenia
-        elevation_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Przewyższenie (m):", elevation_filter_layout)
-        
-        self.filter_min_elevation = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_elevation.setRange(0, 2000)
-        self.filter_min_elevation.setValue(0)
-        elevation_filter_layout.addWidget(self.filter_min_elevation)
-        
-        self.min_elevation_label = QLabel(f"{self.filter_min_elevation.value()}")
-        elevation_filter_layout.addWidget(self.min_elevation_label)
-        self.filter_min_elevation.valueChanged.connect(lambda v: self.min_elevation_label.setText(f"{v}"))
-        
-        elevation_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_elevation = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_elevation.setRange(0, 2000)
-        self.filter_max_elevation.setValue(1000)
-        elevation_filter_layout.addWidget(self.filter_max_elevation)
-        
-        self.max_elevation_label = QLabel(f"{self.filter_max_elevation.value()}")
-        elevation_filter_layout.addWidget(self.max_elevation_label)
-        self.filter_max_elevation.valueChanged.connect(lambda v: self.max_elevation_label.setText(f"{v}"))
+        self.filter_min_elevation, self.filter_max_elevation = self.filter_group.add_slider_filter(
+            "elevation",
+            "Przewyższenie",
+            0, 2000, 0, 1000,
+            " m"
+        )
         
         # Filtr poziomu trudności - suwak
-        difficulty_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Poziom trudności:", difficulty_filter_layout)
-        
-        self.filter_min_difficulty = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_difficulty.setRange(1, 5)
-        self.filter_min_difficulty.setValue(1)
-        difficulty_filter_layout.addWidget(self.filter_min_difficulty)
-        
-        self.min_difficulty_label = QLabel(f"{self.filter_min_difficulty.value()}")
-        difficulty_filter_layout.addWidget(self.min_difficulty_label)
-        self.filter_min_difficulty.valueChanged.connect(lambda v: self.min_difficulty_label.setText(f"{v}"))
-        
-        difficulty_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_difficulty = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_difficulty.setRange(1, 5)
-        self.filter_max_difficulty.setValue(5)
-        difficulty_filter_layout.addWidget(self.filter_max_difficulty)
-        
-        self.max_difficulty_label = QLabel(f"{self.filter_max_difficulty.value()}")
-        difficulty_filter_layout.addWidget(self.max_difficulty_label)
-        self.filter_max_difficulty.valueChanged.connect(lambda v: self.max_difficulty_label.setText(f"{v}"))
+        self.filter_min_difficulty, self.filter_max_difficulty = self.filter_group.add_slider_filter(
+            "difficulty",
+            "Poziom trudności",
+            1, 5, 1, 5
+        )
         
         # Filtr regionu
-        self.filter_region_combo = QComboBox()
-        self.filter_region_combo.addItem("Wszystkie regiony")
-        filter_layout.addRow("Region:", self.filter_region_combo)
+        self.filter_region_combo = self.filter_group.add_combo_filter(
+            "region", "Region"
+        )
         
         # Filtr typu terenu
-        self.filter_terrain_combo = QComboBox()
-        self.filter_terrain_combo.addItem("Wszystkie tereny")
-        filter_layout.addRow("Typ terenu:", self.filter_terrain_combo)
+        self.filter_terrain_combo = self.filter_group.add_combo_filter(
+            "terrain", "Typ terenu"
+        )
         
         # Przyciski filtrowania
-        filter_buttons_layout = QHBoxLayout()
-        filter_layout.addRow("", filter_buttons_layout)
-        
-        self.filter_btn = QPushButton("Zastosuj filtry")
-        self.filter_btn.clicked.connect(self.apply_filters)
-        filter_buttons_layout.addWidget(self.filter_btn)
-        
-        self.reset_filter_btn = QPushButton("Resetuj filtry")
-        self.reset_filter_btn.clicked.connect(self.reset_filters)
-        filter_buttons_layout.addWidget(self.reset_filter_btn)
+        self.filter_group.add_buttons_row()
         
         # Tabela danych
         table_label = QLabel("Dane tras:")
@@ -154,12 +95,8 @@ class TrailPage(QWidget):
         layout.addWidget(self.trail_table)
         
         # Statystyki
-        stats_group = QGroupBox("Statystyki")
-        layout.addWidget(stats_group)
-        stats_layout = QVBoxLayout(stats_group)
-        
-        self.stats_label = QLabel("Brak danych")
-        stats_layout.addWidget(self.stats_label)
+        self.stats_display = StatsDisplay("Statystyki", self)
+        layout.addWidget(self.stats_display)
         
         # Przyciski eksportu i powrotu
         buttons_layout = QHBoxLayout()
@@ -189,15 +126,15 @@ class TrailPage(QWidget):
             return
             
         # Aktualizacja regionów
+        regions = self.main_window.trail_data.get_regions()
         self.filter_region_combo.clear()
         self.filter_region_combo.addItem("Wszystkie regiony")
-        regions = self.main_window.trail_data.get_regions()
         self.filter_region_combo.addItems(regions)
         
         # Aktualizacja typów terenu
+        terrain_types = self.main_window.trail_data.get_terrain_types()
         self.filter_terrain_combo.clear()
         self.filter_terrain_combo.addItem("Wszystkie tereny")
-        terrain_types = self.main_window.trail_data.get_terrain_types()
         self.filter_terrain_combo.addItems(terrain_types)
         
         # Aktualizacja zakresów długości
@@ -205,16 +142,12 @@ class TrailPage(QWidget):
         self.filter_min_length.setRange(0, int(max_len) + 1)
         self.filter_max_length.setRange(0, int(max_len) + 1)
         self.filter_max_length.setValue(int(max_len))
-        self.min_length_label.setText(f"{self.filter_min_length.value()}")
-        self.max_length_label.setText(f"{self.filter_max_length.value()}")
         
         # Znajdowanie maksymalnego przewyższenia
         max_elevation = max(trail.elevation_gain for trail in self.main_window.trail_data.trails)
         self.filter_min_elevation.setRange(0, int(max_elevation) + 100)
         self.filter_max_elevation.setRange(0, int(max_elevation) + 100)
         self.filter_max_elevation.setValue(int(max_elevation))
-        self.min_elevation_label.setText(f"{self.filter_min_elevation.value()}")
-        self.max_elevation_label.setText(f"{self.filter_max_elevation.value()}")
     
     def _update_table(self):
         """Aktualizuje tabelę z trasami."""
@@ -238,7 +171,7 @@ class TrailPage(QWidget):
     def _update_stats(self):
         """Aktualizuje statystyki na podstawie filtrowanych danych."""
         if not self.main_window.trail_data.filtered_trails:
-            self.stats_label.setText("Brak danych")
+            self.stats_display.update_stats("Brak danych")
             return
             
         trails = self.main_window.trail_data.filtered_trails
@@ -255,16 +188,18 @@ class TrailPage(QWidget):
             difficulties[trail.difficulty] = difficulties.get(trail.difficulty, 0) + 1
             terrain_types[trail.terrain_type] = terrain_types.get(trail.terrain_type, 0) + 1
         
-        stats_text = f"Liczba tras: {total}\n"
-        stats_text += f"Średnia długość: {avg_length:.1f} km\n"
-        stats_text += f"Średnie przewyższenie: {avg_elevation:.0f} m\n"
+        stats_dict = {
+            "Liczba tras": total,
+            "Średnia długość": f"{avg_length:.1f} km",
+            "Średnie przewyższenie": f"{avg_elevation:.0f} m"
+        }
         
         # Dodanie informacji o najczęstszym regionie
         if regions:
             most_common_region = max(regions.items(), key=lambda x: x[1])
-            stats_text += f"\nNajpopularniejszy region: {most_common_region[0]} ({most_common_region[1]} tras)"
+            stats_dict["Najpopularniejszy region"] = f"{most_common_region[0]} ({most_common_region[1]} tras)"
         
-        self.stats_label.setText(stats_text)
+        self.stats_display.set_stats(stats_dict)
         
     def apply_filters(self):
         """Stosuje filtry do danych o trasach."""
@@ -277,24 +212,21 @@ class TrailPage(QWidget):
         self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()
         
         # Filtrowanie po długości
-        min_len = self.filter_min_length.value()
-        max_len = self.filter_max_length.value()
+        min_len, max_len = self.filter_group.get_slider_range("length")
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
             if min_len <= trail.length_km <= max_len
         ]
         
         # Filtrowanie po przewyższeniu
-        min_elev = self.filter_min_elevation.value()
-        max_elev = self.filter_max_elevation.value()
+        min_elev, max_elev = self.filter_group.get_slider_range("elevation")
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
             if min_elev <= trail.elevation_gain <= max_elev
         ]
         
         # Filtrowanie po trudności
-        min_diff = self.filter_min_difficulty.value()
-        max_diff = self.filter_max_difficulty.value()
+        min_diff, max_diff = self.filter_group.get_slider_range("difficulty")
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
             if min_diff <= trail.difficulty <= max_diff
@@ -332,22 +264,19 @@ class TrailPage(QWidget):
             return
             
         # Resetowanie kontrolek filtrów
-        self.filter_region_combo.setCurrentIndex(0)  # "Wszystkie regiony"
-        self.filter_terrain_combo.setCurrentIndex(0)  # "Wszystkie tereny"
+        self.filter_group.reset_combo("region", 0)  # "Wszystkie regiony"
+        self.filter_group.reset_combo("terrain", 0)  # "Wszystkie tereny"
         
         # Resetowanie suwaków
         min_len, max_len = self.main_window.trail_data.get_length_range()
-        self.filter_min_length.setValue(0)
-        self.filter_max_length.setValue(int(max_len))
+        self.filter_group.reset_slider("length", 0, int(max_len))
         
         # Resetowanie przewyższenia
         max_elevation = max(trail.elevation_gain for trail in self.main_window.trail_data.trails)
-        self.filter_min_elevation.setValue(0)
-        self.filter_max_elevation.setValue(int(max_elevation))
+        self.filter_group.reset_slider("elevation", 0, int(max_elevation))
         
         # Resetowanie trudności
-        self.filter_min_difficulty.setValue(1)
-        self.filter_max_difficulty.setValue(5)
+        self.filter_group.reset_slider("difficulty", 1, 5)
         
         # Resetowanie filtrowanych tras
         self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()

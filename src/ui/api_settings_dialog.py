@@ -4,12 +4,11 @@ Dialog konfiguracji ustawień API dla pogody i tras turystycznych.
 
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QTabWidget, QWidget, QFormLayout,
+    QPushButton, QTabWidget, QWidget, QFormLayout,
     QGroupBox, QCheckBox, QMessageBox, QFileDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSettings
-
-from src.core.api_client import ApiClient
+from PyQt6.QtCore import pyqtSignal, QSettings
+from src.core import ApiClient
 
 
 class ApiSettingsDialog(QDialog):

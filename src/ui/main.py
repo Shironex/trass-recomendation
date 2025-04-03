@@ -10,15 +10,10 @@ from PyQt6.QtWidgets import (
     QFileDialog
 )
 from PyQt6.QtCore import QSettings, Qt
-from src.ui.pages.home_page import HomePage
-from src.ui.pages.trail_page import TrailPage
-from src.ui.pages.weather_page import WeatherPage
-from src.ui.pages.recommendation_page import RecommendationPage
+from src.ui.pages import ( HomePage, TrailPage, WeatherPage, RecommendationPage )
 from src.ui.api_settings_dialog import ApiSettingsDialog
 from src.ui.components import MainMenu
-from src.core.api_client import ApiClient
-from src.core.trail_data import TrailData
-from src.core.weather_data import WeatherData
+from src.core import ( ApiClient, TrailData, WeatherData )
 from src.utils import logger
 
 
@@ -63,12 +58,6 @@ class MainWindow(QMainWindow):
         
         # Usługi pogodowe
         for service in ["openweathermap", "weatherapi", "visualcrossing"]:
-            api_key = settings.value(f"api_keys/{service}", "", str)
-            if api_key:
-                api_keys[service] = api_key
-        
-        # Usługi trasowe
-        for service in ["alltrails", "wikiloc", "outdooractive"]:
             api_key = settings.value(f"api_keys/{service}", "", str)
             if api_key:
                 api_keys[service] = api_key

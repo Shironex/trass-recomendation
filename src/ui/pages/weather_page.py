@@ -4,13 +4,13 @@ Strona danych pogodowych aplikacji.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QDateEdit, QTableWidget, QTableWidgetItem,
-    QGroupBox, QFormLayout, QMessageBox, QHeaderView, QFileDialog,
-    QLineEdit, QCheckBox, QSlider
+    QTableWidgetItem
 )
 from PyQt6.QtCore import Qt, QDate
-from datetime import date, timedelta
-from src.utils.logger import logger
+from src.utils import logger
+from src.ui.components import (
+    StyledLabel, DataForm, FilterGroup, DataTable
+)
 
 
 class WeatherPage(QWidget):
@@ -34,196 +34,100 @@ class WeatherPage(QWidget):
         main_layout = QVBoxLayout(self)
         
         # Tytuł strony
-        title_label = QLabel("Zarządzanie danymi pogodowymi")
-        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        title_label = StyledLabel("Zarządzanie danymi pogodowymi", is_title=True)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
         
         # Grupa pobierania danych z API
-        api_group = QGroupBox("Pobieranie danych z API")
-        main_layout.addWidget(api_group)
-        
-        api_layout = QFormLayout(api_group)
+        self.api_form = DataForm("Pobieranie danych z API", self)
+        self.api_form.submitClicked.connect(self.fetch_forecast)
+        main_layout.addWidget(self.api_form)
         
         # Wybór serwisu API
-        self.api_service_combo = QComboBox()
-        self.api_service_combo.addItems(["openweathermap", "weatherapi", "visualcrossing"])
-        api_layout.addRow("Serwis API:", self.api_service_combo)
+        self.api_service_combo = self.api_form.add_combo_field(
+            "api_service", 
+            "Serwis API", 
+            ["openweathermap", "weatherapi", "visualcrossing"]
+        )
         
         # Lokalizacja
-        self.location_combo = QComboBox()
-        self.location_combo.setEditable(True)
-        self.location_combo.addItems(["Warszawa", "Kraków", "Wrocław", "Tatry", "Bieszczady", "Sudety"])
-        api_layout.addRow("Lokalizacja:", self.location_combo)
+        self.location_combo = self.api_form.add_combo_field(
+            "location", 
+            "Lokalizacja", 
+            ["Warszawa", "Kraków", "Wrocław", "Tatry", "Bieszczady", "Sudety"],
+            editable=True
+        )
         
         # Daty
-        dates_layout = QHBoxLayout()
-        api_layout.addRow("Zakres dat:", dates_layout)
-        
-        self.start_date_edit = QDateEdit()
-        self.start_date_edit.setDate(QDate.currentDate().addDays(-7))
-        self.start_date_edit.setCalendarPopup(True)
-        dates_layout.addWidget(self.start_date_edit)
-        
-        dates_layout.addWidget(QLabel("do"))
-        
-        self.end_date_edit = QDateEdit()
-        self.end_date_edit.setDate(QDate.currentDate())
-        self.end_date_edit.setCalendarPopup(True)
-        dates_layout.addWidget(self.end_date_edit)
+        self.start_date_edit, self.end_date_edit = self.api_form.add_date_range(
+            "date_range",
+            "Zakres dat",
+            default_start_days=-7,
+            default_end_days=0
+        )
         
         # Przycisk pobierania
-        fetch_button_layout = QHBoxLayout()
-        api_layout.addRow("", fetch_button_layout)
-        
-        fetch_forecast_button = QPushButton("Pobierz prognozę")
-        fetch_forecast_button.clicked.connect(self.fetch_forecast)
-        fetch_button_layout.addWidget(fetch_forecast_button)
+        self.api_form.add_submit_button("Pobierz prognozę")
         
         # Dodajemy grupę filtrów
-        filter_group = QGroupBox("Filtrowanie danych")
-        main_layout.addWidget(filter_group)
-        
-        filter_layout = QFormLayout(filter_group)
+        self.filter_group = FilterGroup("Filtrowanie danych", self)
+        self.filter_group.filterApplied.connect(self.apply_filters)
+        self.filter_group.filterReset.connect(self.reset_filters)
+        main_layout.addWidget(self.filter_group)
         
         # Filtrowanie po lokalizacji
-        self.filter_location_combo = QComboBox()
-        self.filter_location_combo.addItem("Wszystkie lokalizacje")
-        filter_layout.addRow("Lokalizacja:", self.filter_location_combo)
+        self.filter_location_combo = self.filter_group.add_combo_filter(
+            "location", 
+            "Lokalizacja"
+        )
         
         # Filtrowanie po datach
-        filter_dates_layout = QHBoxLayout()
-        filter_layout.addRow("Zakres dat:", filter_dates_layout)
-        
-        self.filter_start_date = QDateEdit()
-        self.filter_start_date.setDate(QDate.currentDate().addDays(-30))
-        self.filter_start_date.setCalendarPopup(True)
-        filter_dates_layout.addWidget(self.filter_start_date)
-        
-        filter_dates_layout.addWidget(QLabel("do"))
-        
-        self.filter_end_date = QDateEdit()
-        self.filter_end_date.setDate(QDate.currentDate().addDays(30))
-        self.filter_end_date.setCalendarPopup(True)
-        filter_dates_layout.addWidget(self.filter_end_date)
+        self.filter_start_date, self.filter_end_date = self.filter_group.add_date_range_filter(
+            "date_range",
+            "Zakres dat"
+        )
         
         # Filtrowanie po temperaturze
-        temp_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Temperatura (°C):", temp_filter_layout)
-        
-        self.filter_min_temp = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_temp.setRange(-30, 50)
-        self.filter_min_temp.setValue(-10)
-        temp_filter_layout.addWidget(self.filter_min_temp)
-        
-        self.min_temp_label = QLabel(f"{self.filter_min_temp.value()}")
-        temp_filter_layout.addWidget(self.min_temp_label)
-        self.filter_min_temp.valueChanged.connect(lambda v: self.min_temp_label.setText(f"{v}"))
-        
-        temp_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_temp = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_temp.setRange(-30, 50)
-        self.filter_max_temp.setValue(30)
-        temp_filter_layout.addWidget(self.filter_max_temp)
-        
-        self.max_temp_label = QLabel(f"{self.filter_max_temp.value()}")
-        temp_filter_layout.addWidget(self.max_temp_label)
-        self.filter_max_temp.valueChanged.connect(lambda v: self.max_temp_label.setText(f"{v}"))
+        self.filter_min_temp, self.filter_max_temp = self.filter_group.add_slider_filter(
+            "temp",
+            "Temperatura (°C)",
+            -30, 50, -10, 30
+        )
         
         # Filtrowanie po opadach
-        precip_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Opady (mm):", precip_filter_layout)
-        
-        self.filter_min_precip = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_precip.setRange(0, 100)
-        self.filter_min_precip.setValue(0)
-        precip_filter_layout.addWidget(self.filter_min_precip)
-        
-        self.min_precip_label = QLabel(f"{self.filter_min_precip.value()}")
-        precip_filter_layout.addWidget(self.min_precip_label)
-        self.filter_min_precip.valueChanged.connect(lambda v: self.min_precip_label.setText(f"{v}"))
-        
-        precip_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_precip = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_precip.setRange(0, 100)
-        self.filter_max_precip.setValue(50)
-        precip_filter_layout.addWidget(self.filter_max_precip)
-        
-        self.max_precip_label = QLabel(f"{self.filter_max_precip.value()}")
-        precip_filter_layout.addWidget(self.max_precip_label)
-        self.filter_max_precip.valueChanged.connect(lambda v: self.max_precip_label.setText(f"{v}"))
+        self.filter_min_precip, self.filter_max_precip = self.filter_group.add_slider_filter(
+            "precip",
+            "Opady (mm)",
+            0, 100, 0, 50
+        )
         
         # Filtrowanie po nasłonecznieniu
-        sunshine_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Nasłonecznienie (h):", sunshine_filter_layout)
-        
-        self.filter_min_sunshine = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_sunshine.setRange(0, 24)
-        self.filter_min_sunshine.setValue(0)
-        sunshine_filter_layout.addWidget(self.filter_min_sunshine)
-        
-        self.min_sunshine_label = QLabel(f"{self.filter_min_sunshine.value()}")
-        sunshine_filter_layout.addWidget(self.min_sunshine_label)
-        self.filter_min_sunshine.valueChanged.connect(lambda v: self.min_sunshine_label.setText(f"{v}"))
-        
-        sunshine_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_sunshine = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_sunshine.setRange(0, 24)
-        self.filter_max_sunshine.setValue(12)
-        sunshine_filter_layout.addWidget(self.filter_max_sunshine)
-        
-        self.max_sunshine_label = QLabel(f"{self.filter_max_sunshine.value()}")
-        sunshine_filter_layout.addWidget(self.max_sunshine_label)
-        self.filter_max_sunshine.valueChanged.connect(lambda v: self.max_sunshine_label.setText(f"{v}"))
+        self.filter_min_sunshine, self.filter_max_sunshine = self.filter_group.add_slider_filter(
+            "sunshine",
+            "Nasłonecznienie (h)",
+            0, 24, 0, 12
+        )
         
         # Filtrowanie po zachmurzeniu
-        cloud_filter_layout = QHBoxLayout()
-        filter_layout.addRow("Zachmurzenie (%):", cloud_filter_layout)
+        self.filter_min_cloud, self.filter_max_cloud = self.filter_group.add_slider_filter(
+            "cloud",
+            "Zachmurzenie (%)",
+            0, 100, 0, 100
+        )
         
-        self.filter_min_cloud = QSlider(Qt.Orientation.Horizontal)
-        self.filter_min_cloud.setRange(0, 100)
-        self.filter_min_cloud.setValue(0)
-        cloud_filter_layout.addWidget(self.filter_min_cloud)
-        
-        self.min_cloud_label = QLabel(f"{self.filter_min_cloud.value()}")
-        cloud_filter_layout.addWidget(self.min_cloud_label)
-        self.filter_min_cloud.valueChanged.connect(lambda v: self.min_cloud_label.setText(f"{v}"))
-        
-        cloud_filter_layout.addWidget(QLabel("do"))
-        
-        self.filter_max_cloud = QSlider(Qt.Orientation.Horizontal)
-        self.filter_max_cloud.setRange(0, 100)
-        self.filter_max_cloud.setValue(100)
-        cloud_filter_layout.addWidget(self.filter_max_cloud)
-        
-        self.max_cloud_label = QLabel(f"{self.filter_max_cloud.value()}")
-        cloud_filter_layout.addWidget(self.max_cloud_label)
-        self.filter_max_cloud.valueChanged.connect(lambda v: self.max_cloud_label.setText(f"{v}"))
-        
-        # Przycisk filtrowania
-        filter_buttons_layout = QHBoxLayout()
-        filter_layout.addRow("", filter_buttons_layout)
-        
-        apply_filter_button = QPushButton("Zastosuj filtry")
-        apply_filter_button.clicked.connect(self.apply_filters)
-        filter_buttons_layout.addWidget(apply_filter_button)
-        
-        reset_filter_button = QPushButton("Resetuj filtry")
-        reset_filter_button.clicked.connect(self.reset_filters)
-        filter_buttons_layout.addWidget(reset_filter_button)
+        # Dodanie przycisków filtrowania
+        self.filter_group.add_buttons_row()
         
         # Tabela danych
         table_label = QLabel("Dane pogodowe:")
         main_layout.addWidget(table_label)
         
-        self.weather_table = QTableWidget(0, 8)
+        self.weather_table = DataTable()
+        self.weather_table.setColumnCount(8)
         self.weather_table.setHorizontalHeaderLabels([
             "Data", "Lokalizacja", "Śr. temp (°C)", "Min temp (°C)", 
             "Max temp (°C)", "Opady (mm)", "Godz. słoneczne", "Zachmurzenie (%)"
         ])
-        self.weather_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         main_layout.addWidget(self.weather_table)
         
         # Przyciski eksportu i powrotu
@@ -236,14 +140,25 @@ class WeatherPage(QWidget):
         close_button.clicked.connect(self.parent.show_home_page)
         buttons_layout.addWidget(close_button)
     
-    def fetch_forecast(self):
-        """Pobiera prognozę pogody z wybranego API."""
-        service = self.api_service_combo.currentText()
-        location = self.location_combo.currentText()
+    def fetch_forecast(self, data=None):
+        """
+        Pobiera prognozę pogody z wybranego API.
         
-        # Pobierz wybrane daty
-        start_date = self.start_date_edit.date().toPyDate()
-        end_date = self.end_date_edit.date().toPyDate()
+        Args:
+            data: Dane z formularza (opcjonalne).
+        """
+        # Jeśli dane są przekazane z sygnału formularza
+        if data:
+            service = data.get('api_service')
+            location = data.get('location')
+            start_date = data.get('date_range_start')
+            end_date = data.get('date_range_end')
+        else:
+            # Użyj danych z kontrolek (starszy sposób)
+            service = self.api_service_combo.currentText()
+            location = self.location_combo.currentText()
+            start_date = self.start_date_edit.date().toPyDate()
+            end_date = self.end_date_edit.date().toPyDate()
         
         # Oblicz liczbę dni między datami
         days = (end_date - start_date).days + 1
@@ -353,16 +268,11 @@ class WeatherPage(QWidget):
         
         # Pobieranie wybranych filtrów
         location = self.filter_location_combo.currentText()
-        start_date = self.filter_start_date.date().toPyDate()
-        end_date = self.filter_end_date.date().toPyDate()
-        min_temp = self.filter_min_temp.value()
-        max_temp = self.filter_max_temp.value()
-        min_precip = self.filter_min_precip.value()
-        max_precip = self.filter_max_precip.value()
-        min_sunshine = self.filter_min_sunshine.value()
-        max_sunshine = self.filter_max_sunshine.value()
-        min_cloud = self.filter_min_cloud.value()
-        max_cloud = self.filter_max_cloud.value()
+        start_date, end_date = self.filter_group.get_date_range("date_range")
+        min_temp, max_temp = self.filter_group.get_slider_range("temp")
+        min_precip, max_precip = self.filter_group.get_slider_range("precip")
+        min_sunshine, max_sunshine = self.filter_group.get_slider_range("sunshine")
+        min_cloud, max_cloud = self.filter_group.get_slider_range("cloud")
         
         # Resetowanie filtrowanych rekordów
         self.parent.weather_data.filtered_records = self.parent.weather_data.records.copy()
@@ -454,28 +364,27 @@ class WeatherPage(QWidget):
             return
         
         # Resetowanie kontrolek filtrów
-        self.filter_location_combo.setCurrentIndex(0)  # "Wszystkie lokalizacje"
+        self.filter_group.reset_combo("location", 0)  # "Wszystkie lokalizacje"
         
         # Resetowanie zakresu dat
         min_date, max_date = self.parent.weather_data.get_date_range()
-        self.filter_start_date.setDate(QDate.fromString(min_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
-        self.filter_end_date.setDate(QDate.fromString(max_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
+        self.filter_group.reset_date_range(
+            "date_range", 
+            (min_date - QDate.currentDate().toPyDate()).days,
+            (max_date - QDate.currentDate().toPyDate()).days
+        )
         
         # Resetowanie zakresu temperatur
-        self.filter_min_temp.setValue(-10)
-        self.filter_max_temp.setValue(30)
+        self.filter_group.reset_slider("temp", -10, 30)
         
         # Resetowanie zakresu opadów
-        self.filter_min_precip.setValue(0)
-        self.filter_max_precip.setValue(50)
+        self.filter_group.reset_slider("precip", 0, 50)
         
         # Resetowanie zakresu nasłonecznienia
-        self.filter_min_sunshine.setValue(0)
-        self.filter_max_sunshine.setValue(12)
+        self.filter_group.reset_slider("sunshine", 0, 12)
         
         # Resetowanie zakresu zachmurzenia
-        self.filter_min_cloud.setValue(0)
-        self.filter_max_cloud.setValue(100)
+        self.filter_group.reset_slider("cloud", 0, 100)
         
         # Resetowanie filtrowanych rekordów
         self.parent.weather_data.filtered_records = self.parent.weather_data.records.copy()

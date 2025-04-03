@@ -4,9 +4,8 @@ Moduł do przetwarzania danych i generowania rekomendacji tras turystycznych.
 
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import date, timedelta
-from functools import reduce
-from src.core.trail_data import TrailData, TrailRecord
-from src.core.weather_data import WeatherData, WeatherRecord
+from src.core.trail_data import TrailData
+from src.core.weather_data import WeatherData
 from src.utils import logger
 
 
