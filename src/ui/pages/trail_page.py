@@ -41,32 +41,6 @@ class TrailPage(QWidget):
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
-        # Grupa API
-        api_group = QGroupBox("Pobieranie danych z API")
-        layout.addWidget(api_group)
-        
-        api_layout = QFormLayout(api_group)
-        
-        # Wybór serwisu API
-        self.api_service_combo = QComboBox()
-        self.api_service_combo.clear()
-        self.api_service_combo.addItems(["openstreetmap", "outdooractive"])
-        api_layout.addRow("Serwis API:", self.api_service_combo)
-        
-        # Region
-        self.region_combo = QComboBox()
-        self.region_combo.setEditable(True)
-        self.region_combo.addItems(["Tatry", "Bieszczady", "Karkonosze", "Beskidy", "Góry Świętokrzyskie"])
-        api_layout.addRow("Region:", self.region_combo)
-        
-        # Przycisk pobierania
-        fetch_button_layout = QHBoxLayout()
-        api_layout.addRow("", fetch_button_layout)
-        
-        fetch_button = QPushButton("Pobierz dane o trasach")
-        fetch_button.clicked.connect(self.fetch_trails_data)
-        fetch_button_layout.addWidget(fetch_button)
-        
         # Grupa filtrów tras
         filter_group = QGroupBox("Filtrowanie danych")
         layout.addWidget(filter_group)
@@ -199,49 +173,9 @@ class TrailPage(QWidget):
     
     def _connect_signals(self):
         """Połączenie sygnałów z slotami."""
-        # Nie potrzeba już definiować połączeń, są już dodane w funkcji _setup_ui
-
-    def fetch_trails_data(self):
-        """Pobiera dane o trasach z API."""
-        service = self.api_service_combo.currentText()
-        region = self.region_combo.currentText()
+        # Nie ma już potrzeby definiowania sygnałów, są już dodane w funkcji _setup_ui
+        pass
         
-        if service != "openstreetmap" and not self.main_window.api_client.api_keys.get(service):
-            self.main_window.show_error(
-                "Brak klucza API",
-                f"Nie skonfigurowano klucza API dla serwisu {service}. "
-                "Przejdź do menu Narzędzia > Konfiguracja API, aby dodać klucz."
-            )
-            return
-            
-        try:
-            # Pobieranie danych o trasach
-            trails = self.main_window.api_client.get_trails_data(service, region=region)
-            
-            if not trails:
-                self.main_window.show_info(
-                    "Brak danych",
-                    f"Nie znaleziono tras dla regionu {region}. Spróbuj użyć przykładowych danych."
-                )
-                return
-                
-            # Aktualizacja danych
-            self.main_window.trail_data.trails = trails
-            self.main_window.trail_data.filtered_trails = trails.copy()
-            
-            # Aktualizacja interfejsu
-            self.update_data()
-            
-            self.main_window.show_info(
-                "Pobrano dane tras",
-                f"Pomyślnie pobrano {len(trails)} tras dla regionu {region}."
-            )
-        except Exception as e:
-            self.main_window.show_error(
-                "Błąd pobierania danych", 
-                f"Nie udało się pobrać danych o trasach: {str(e)}"
-            )
-            
     def update_data(self):
         """Aktualizuje wszystkie dane na stronie."""
         self._update_filters()

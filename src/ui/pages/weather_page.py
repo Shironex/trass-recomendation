@@ -79,10 +79,6 @@ class WeatherPage(QWidget):
         fetch_forecast_button.clicked.connect(self.fetch_forecast)
         fetch_button_layout.addWidget(fetch_forecast_button)
         
-        fetch_historical_button = QPushButton("Pobierz dane historyczne")
-        fetch_historical_button.clicked.connect(self.fetch_historical)
-        fetch_button_layout.addWidget(fetch_historical_button)
-        
         # Dodajemy grupę filtrów
         filter_group = QGroupBox("Filtrowanie danych")
         main_layout.addWidget(filter_group)
@@ -305,88 +301,6 @@ class WeatherPage(QWidget):
             self.parent.show_error(
                 "Błąd pobierania danych", 
                 f"Nie udało się pobrać prognozy pogody: {str(e)}"
-            )
-    
-    def fetch_historical(self):
-        """Pobiera historyczne dane pogodowe z wybranego API."""
-        service = self.api_service_combo.currentText()
-        location = self.location_combo.currentText()
-        
-        start_date = self.start_date_edit.date().toPyDate()
-        end_date = self.end_date_edit.date().toPyDate()
-        
-        # Sprawdzenie, czy start_date nie jest późniejsza niż end_date
-        if start_date > end_date:
-            self.parent.show_error(
-                "Błędny zakres dat",
-                "Data początkowa nie może być późniejsza niż data końcowa."
-            )
-            return
-        
-        # Sprawdzenie, czy zakres dat nie jest zbyt duży (limit 30 dni dla wielu API)
-        if (end_date - start_date).days > 30:
-            result = QMessageBox.question(
-                self,
-                "Duży zakres dat",
-                "Wybrany zakres dat przekracza 30 dni, co może spowodować wiele zapytań do API. Kontynuować?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if result == QMessageBox.StandardButton.No:
-                return
-        
-        if not self.parent.api_client.api_keys.get(service):
-            self.parent.show_error(
-                "Brak klucza API",
-                f"Nie skonfigurowano klucza API dla serwisu {service}. "
-                "Przejdź do menu Narzędzia > Konfiguracja API, aby dodać klucz."
-            )
-            return
-        
-        try:
-            # Pobieranie historycznych danych
-            weather_records = self.parent.api_client.get_historical_weather(
-                service, location, start_date, end_date
-            )
-            
-            if not weather_records:
-                self.parent.show_error(
-                    "Brak danych",
-                    f"Nie otrzymano żadnych danych historycznych dla lokalizacji {location}."
-                )
-                return
-            
-            # Aktualizacja danych
-            self.parent.weather_data.records = weather_records
-            self.parent.weather_data.filtered_records = weather_records.copy()
-            
-            # Aktualizacja tabeli
-            self.update_data()
-            
-            # Dodanie lokalizacji do filtra
-            self.update_filter_locations()
-            
-            # Wyświetl informację o różnicy w datach (jeśli występuje)
-            min_date, max_date = self.parent.weather_data.get_date_range()
-            date_mismatch = (min_date != start_date or max_date != end_date)
-            
-            info_message = (
-                f"Pomyślnie pobrano historyczne dane pogodowe dla lokalizacji {location} "
-                f"za okres od {min_date.strftime('%d.%m.%Y')} do {max_date.strftime('%d.%m.%Y')} "
-                f"({len(weather_records)} dni)."
-            )
-            
-            if date_mismatch:
-                info_message += (
-                    f"\n\nUwaga: Otrzymany zakres dat różni się od żądanego "
-                    f"({start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}). "
-                    f"API pogodowe mogło zwrócić tylko dostępne dane."
-                )
-            
-            self.parent.show_info("Pobrano dane historyczne", info_message)
-        except Exception as e:
-            self.parent.show_error(
-                "Błąd pobierania danych", 
-                f"Nie udało się pobrać historycznych danych pogodowych: {str(e)}"
             )
     
     def update_data(self):

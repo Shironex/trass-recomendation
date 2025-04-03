@@ -105,41 +105,15 @@ class ApiSettingsDialog(QDialog):
         
         self.api_widgets["visualcrossing"] = visualcrossing_key
         
-        # Zakładka API tras
-        trails_tab = QWidget()
-        tab_widget.addTab(trails_tab, "API Tras")
+        # Informacja o przykładowych danych
+        example_group = QGroupBox("Informacja o trasach")
+        weather_layout.addWidget(example_group)
         
-        trails_layout = QVBoxLayout(trails_tab)
-        
-        # OpenStreetMap
-        osm_group = QGroupBox("OpenStreetMap")
-        trails_layout.addWidget(osm_group)
-        
-        osm_layout = QFormLayout(osm_group)
-        osm_label = QLabel("API OpenStreetMap nie wymaga klucza API dla podstawowych funkcji.")
-        osm_layout.addRow("", osm_label)
-        
-        osm_test_btn = QPushButton("Testuj połączenie")
-        osm_test_btn.clicked.connect(lambda: self.test_trail_api("openstreetmap", ""))
-        osm_layout.addRow("", osm_test_btn)
-        
-        # Outdooractive
-        outdooractive_group = QGroupBox("Outdooractive")
-        trails_layout.addWidget(outdooractive_group)
-        
-        outdooractive_layout = QFormLayout(outdooractive_group)
-        outdooractive_key = QLineEdit()
-        outdooractive_key.setEchoMode(QLineEdit.EchoMode.Password)
-        outdooractive_key.setPlaceholderText("Wprowadź klucz API")
-        outdooractive_layout.addRow("Klucz API:", outdooractive_key)
-        
-        outdooractive_test_btn = QPushButton("Testuj połączenie")
-        outdooractive_test_btn.clicked.connect(
-            lambda: self.test_trail_api("outdooractive", outdooractive_key.text())
-        )
-        outdooractive_layout.addRow("", outdooractive_test_btn)
-        
-        self.api_widgets["outdooractive"] = outdooractive_key
+        example_layout = QFormLayout(example_group)
+        example_label = QLabel("Funkcja pobierania tras z API została usunięta. " 
+                             "W przyszłej wersji zostanie zaimplementowane generowanie " 
+                             "danych o trasach za pomocą OpenAI.")
+        example_layout.addRow("", example_label)
         
         # Zakładka ustawień pamięci podręcznej
         cache_tab = QWidget()
@@ -277,54 +251,6 @@ class ApiSettingsDialog(QDialog):
                         "Test nieudany",
                         f"Połączenie z API {service} nie zwróciło wyników."
                     )
-        
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Błąd połączenia",
-                f"Nie udało się połączyć z API {service}.\nBłąd: {str(e)}"
-            )
-    
-    def test_trail_api(self, service, api_key):
-        """
-        Testuje połączenie z API tras.
-        
-        Args:
-            service: Nazwa serwisu API.
-            api_key: Klucz API do przetestowania.
-        """
-        if service != "openstreetmap" and not api_key:
-            QMessageBox.warning(
-                self,
-                "Brak klucza API",
-                f"Wprowadź klucz API dla serwisu {service}."
-            )
-            return
-        
-        try:
-            # Tymczasowy klient API do testów
-            api_client = None
-            if service == "openstreetmap":
-                # OpenStreetMap nie wymaga klucza API
-                api_client = ApiClient()
-            else:
-                api_client = ApiClient({service: api_key})
-            
-            # Użycie nowej metody test_trail_api zamiast bezpośredniego pobierania danych
-            success = api_client.test_trail_api(service)
-            
-            if success:
-                QMessageBox.information(
-                    self,
-                    "Test udany",
-                    f"Połączenie z API {service} działa poprawnie."
-                )
-            else:
-                QMessageBox.warning(
-                    self,
-                    "Test nieudany",
-                    f"Połączenie z API {service} nie działa poprawnie."
-                )
         
         except Exception as e:
             QMessageBox.critical(
