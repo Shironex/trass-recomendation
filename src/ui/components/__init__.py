@@ -15,6 +15,8 @@ from .filter_group import FilterGroup
 from .data_form import DataForm
 from .stats_display import StatsDisplay
 from .result_card import ResultCard
+from .charts import WeatherChart, TrailStatisticsChart
+from .chart_dialog import ChartDialog
 
 __all__ = [
     'StyledLabel',
@@ -27,5 +29,8 @@ __all__ = [
     'FilterGroup',
     'DataForm',
     'StatsDisplay',
-    'ResultCard'
+    'ResultCard',
+    'WeatherChart',
+    'TrailStatisticsChart',
+    'ChartDialog'
 ]

@@ -9,6 +9,8 @@ setup(
         "PyQt6>=6.6.1",
         "colorama>=0.4.6",
         "requests>=2.31.0",
+        "pyqtgraph>=0.13.3",
+        "numpy>=1.26.0",
     ],
     extras_require={
         "dev": [

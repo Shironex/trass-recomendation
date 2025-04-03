@@ -3,3 +3,5 @@ pytest>=7.0.0
 pytest-cov>=4.0.0 
 watchdog>=4.0.2
 requests>=2.31.0
+pyqtgraph>=0.13.3
+numpy>=1.26.0

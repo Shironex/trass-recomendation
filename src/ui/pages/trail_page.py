@@ -4,15 +4,17 @@ Strona zarządzania trasami aplikacji Rekomendator Tras Turystycznych.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidgetItem,
-    QLabel, QPushButton
+    QLabel, QPushButton, QSplitter
 )
 from PyQt6.QtCore import Qt
 
 import sys
 sys.path.append('.')
 from src.ui.components import (
-    StyledLabel, DataTable, FilterGroup, StatsDisplay
+    StyledLabel, DataTable, FilterGroup, StatsDisplay,
+    TrailStatisticsChart
 )
+from src.ui.components.chart_dialog import ChartDialog
 from src.utils import logger
 
 
@@ -91,22 +93,31 @@ class TrailPage(QWidget):
         self.trail_table.setHorizontalHeaderLabels([
             "Nazwa", "Region", "Długość (km)", "Trudność", "Teren", "Przewyższenie (m)"
         ])
-        
         layout.addWidget(self.trail_table)
         
-        # Statystyki
+        # Statystyki tekstowe
         self.stats_display = StatsDisplay("Statystyki", self)
         layout.addWidget(self.stats_display)
         
-        # Przyciski eksportu i powrotu
+        # Przyciski
         buttons_layout = QHBoxLayout()
         layout.addLayout(buttons_layout)
         
+        # Przycisk wykresu
+        chart_button = QPushButton("Pokaż statystyki graficzne")
+        chart_button.clicked.connect(self.show_chart_dialog)
+        buttons_layout.addWidget(chart_button)
+        
         buttons_layout.addStretch()
         
+        # Przycisk powrotu
         close_button = QPushButton("Powrót")
         close_button.clicked.connect(self.main_window.show_home_page)
         buttons_layout.addWidget(close_button)
+        
+        # Ukryty wykres do przechowywania danych
+        self.trail_chart = TrailStatisticsChart()
+        self.trail_chart.hide()
     
     def _connect_signals(self):
         """Połączenie sygnałów z slotami."""
@@ -118,6 +129,7 @@ class TrailPage(QWidget):
         self._update_filters()
         self._update_table()
         self._update_stats()
+        self.trail_chart.set_trail_data(self.main_window.trail_data.trails)
     
     def _update_filters(self):
         """Aktualizuje filtry na podstawie wczytanych danych."""
@@ -202,59 +214,62 @@ class TrailPage(QWidget):
         self.stats_display.set_stats(stats_dict)
         
     def apply_filters(self):
-        """Stosuje filtry do danych o trasach."""
+        """Stosuje filtry do danych."""
         if not self.main_window.trail_data.trails:
-            logger.warn("Próba filtrowania pustych danych o trasach")
-            self.main_window.show_error("Ostrzeżenie", "Brak danych do filtrowania!")
+            self.main_window.show_error("Brak danych", "Brak danych tras do filtrowania.")
             return
-        
-        # Resetowanie filtrów
+            
+        # Resetowanie filtrowanych tras
         self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()
         
+        # Filtrowanie po regionie
+        region = self.filter_region_combo.currentText()
+        if region != "Wszystkie regiony":
+            self.main_window.trail_data.filtered_trails = [
+                trail for trail in self.main_window.trail_data.filtered_trails
+                if trail.region == region
+            ]
+        
+        # Filtrowanie po typie terenu
+        terrain = self.filter_terrain_combo.currentText()
+        if terrain != "Wszystkie tereny":
+            self.main_window.trail_data.filtered_trails = [
+                trail for trail in self.main_window.trail_data.filtered_trails
+                if trail.terrain_type == terrain
+            ]
+        
         # Filtrowanie po długości
-        min_len, max_len = self.filter_group.get_slider_range("length")
+        min_length = self.filter_min_length.value()
+        max_length = self.filter_max_length.value()
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
-            if min_len <= trail.length_km <= max_len
+            if min_length <= trail.length_km <= max_length
         ]
         
         # Filtrowanie po przewyższeniu
-        min_elev, max_elev = self.filter_group.get_slider_range("elevation")
+        min_elevation = self.filter_min_elevation.value()
+        max_elevation = self.filter_max_elevation.value()
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
-            if min_elev <= trail.elevation_gain <= max_elev
+            if min_elevation <= trail.elevation_gain <= max_elevation
         ]
         
         # Filtrowanie po trudności
-        min_diff, max_diff = self.filter_group.get_slider_range("difficulty")
+        min_difficulty = self.filter_min_difficulty.value()
+        max_difficulty = self.filter_max_difficulty.value()
         self.main_window.trail_data.filtered_trails = [
             trail for trail in self.main_window.trail_data.filtered_trails
-            if min_diff <= trail.difficulty <= max_diff
+            if min_difficulty <= trail.difficulty <= max_difficulty
         ]
         
-        # Filtrowanie po regionie
-        region_text = self.filter_region_combo.currentText()
-        if region_text != "Wszystkie regiony":
-            self.main_window.trail_data.filtered_trails = [
-                trail for trail in self.main_window.trail_data.filtered_trails
-                if trail.region == region_text
-            ]
-        
-        # Filtrowanie po terenie
-        terrain_text = self.filter_terrain_combo.currentText()
-        if terrain_text != "Wszystkie tereny":
-            self.main_window.trail_data.filtered_trails = [
-                trail for trail in self.main_window.trail_data.filtered_trails
-                if trail.terrain_type == terrain_text
-            ]
-        
-        # Aktualizacja tabeli i statystyk
+        # Aktualizacja widoku
         self._update_table()
         self._update_stats()
+        self.trail_chart.set_trail_data(self.main_window.trail_data.filtered_trails)
         
-        # Informacja w statusbarze
+        # Informacja o liczbie wyników
         self.main_window.status_bar.showMessage(
-            f"Zastosowano filtry: znaleziono {len(self.main_window.trail_data.filtered_trails)} tras",
+            f"Zastosowano filtry: znaleziono {len(self.main_window.trail_data.filtered_trails)} tras", 
             3000
         )
     
@@ -263,27 +278,43 @@ class TrailPage(QWidget):
         if not self.main_window.trail_data.trails:
             return
             
-        # Resetowanie kontrolek filtrów
-        self.filter_group.reset_combo("region", 0)  # "Wszystkie regiony"
-        self.filter_group.reset_combo("terrain", 0)  # "Wszystkie tereny"
+        # Reset filtra regionu
+        self.filter_region_combo.setCurrentText("Wszystkie regiony")
         
-        # Resetowanie suwaków
+        # Reset filtra terenu
+        self.filter_terrain_combo.setCurrentText("Wszystkie tereny")
+        
+        # Reset filtra długości
         min_len, max_len = self.main_window.trail_data.get_length_range()
-        self.filter_group.reset_slider("length", 0, int(max_len))
+        self.filter_min_length.setValue(0)
+        self.filter_max_length.setValue(int(max_len))
         
-        # Resetowanie przewyższenia
+        # Reset filtra przewyższenia
         max_elevation = max(trail.elevation_gain for trail in self.main_window.trail_data.trails)
-        self.filter_group.reset_slider("elevation", 0, int(max_elevation))
+        self.filter_min_elevation.setValue(0)
+        self.filter_max_elevation.setValue(int(max_elevation))
         
-        # Resetowanie trudności
-        self.filter_group.reset_slider("difficulty", 1, 5)
+        # Reset filtra trudności
+        self.filter_min_difficulty.setValue(1)
+        self.filter_max_difficulty.setValue(5)
         
         # Resetowanie filtrowanych tras
         self.main_window.trail_data.filtered_trails = self.main_window.trail_data.trails.copy()
         
-        # Aktualizacja tabeli
+        # Aktualizacja widoku
         self._update_table()
         self._update_stats()
+        self.trail_chart.set_trail_data(self.main_window.trail_data.trails)
         
-        # Komunikat
+        # Komunikat o zresetowaniu
         self.main_window.status_bar.showMessage("Zresetowano filtry", 3000) 
+    
+    def show_chart_dialog(self):
+        """Wyświetla okno dialogowe z wykresem statystyk."""
+        if not self.main_window.trail_data.trails:
+            self.main_window.show_error("Brak danych", "Brak danych do wyświetlenia na wykresie.")
+            return
+            
+        dialog = ChartDialog("trail", self)
+        dialog.set_data(self.main_window.trail_data.filtered_trails)
+        dialog.exec() 

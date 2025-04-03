@@ -4,13 +4,15 @@ Strona danych pogodowych aplikacji.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidgetItem
+    QTableWidgetItem, QSplitter
 )
 from PyQt6.QtCore import Qt, QDate
 from src.utils import logger
 from src.ui.components import (
-    StyledLabel, DataForm, FilterGroup, DataTable
+    StyledLabel, DataForm, FilterGroup, DataTable,
+    WeatherChart
 )
+from src.ui.components.chart_dialog import ChartDialog
 
 
 class WeatherPage(QWidget):
@@ -130,15 +132,25 @@ class WeatherPage(QWidget):
         ])
         main_layout.addWidget(self.weather_table)
         
-        # Przyciski eksportu i powrotu
+        # Przyciski
         buttons_layout = QHBoxLayout()
         main_layout.addLayout(buttons_layout)
         
+        # Przycisk wykresu
+        chart_button = QPushButton("Pokaż wykres")
+        chart_button.clicked.connect(self.show_chart_dialog)
+        buttons_layout.addWidget(chart_button)
+        
         buttons_layout.addStretch()
         
+        # Przycisk powrotu
         close_button = QPushButton("Powrót")
         close_button.clicked.connect(self.parent.show_home_page)
         buttons_layout.addWidget(close_button)
+        
+        # Ukryty wykres do przechowywania danych
+        self.weather_chart = WeatherChart()
+        self.weather_chart.hide()
     
     def fetch_forecast(self, data=None):
         """
@@ -219,18 +231,11 @@ class WeatherPage(QWidget):
             )
     
     def update_data(self):
-        """Aktualizuje dane na stronie, w tym tabelę i filtry."""
+        """Aktualizuje dane w tabeli i na wykresie."""
         self.update_weather_table()
+        self.weather_chart.set_weather_data(self.parent.weather_data.records)
+        self.sync_api_dates_with_data()
         self.update_filter_locations()
-        
-        # Aktualizacja zakresu dat w filtrach
-        if self.parent.weather_data.records:
-            min_date, max_date = self.parent.weather_data.get_date_range()
-            self.filter_start_date.setDate(QDate.fromString(min_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
-            self.filter_end_date.setDate(QDate.fromString(max_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
-            
-            # Aktualizacja dat w panelu pobierania, aby odzwierciedlały faktycznie otrzymane daty
-            self.sync_api_dates_with_data()
     
     def sync_api_dates_with_data(self):
         """Synchronizuje daty w panelu pobierania z faktycznie otrzymanymi danymi."""
@@ -261,50 +266,49 @@ class WeatherPage(QWidget):
                 self.filter_location_combo.setCurrentIndex(index)
     
     def apply_filters(self):
-        """Zastosowanie filtrów do danych pogodowych."""
-        if not self.parent.weather_data.records:
-            self.parent.show_error("Brak danych", "Brak danych pogodowych do filtrowania.")
-            return
-        
-        # Pobieranie wybranych filtrów
-        location = self.filter_location_combo.currentText()
-        start_date, end_date = self.filter_group.get_date_range("date_range")
-        min_temp, max_temp = self.filter_group.get_slider_range("temp")
-        min_precip, max_precip = self.filter_group.get_slider_range("precip")
-        min_sunshine, max_sunshine = self.filter_group.get_slider_range("sunshine")
-        min_cloud, max_cloud = self.filter_group.get_slider_range("cloud")
-        
-        # Resetowanie filtrowanych rekordów
+        """Stosuje filtry do danych."""
+        # Resetowanie filtrowanych danych
         self.parent.weather_data.filtered_records = self.parent.weather_data.records.copy()
         
         # Filtrowanie po lokalizacji
-        if location != "Wszystkie lokalizacje":
-            self.parent.weather_data.filter_by_location(location)
+        location = self.filter_location_combo.currentText()
+        if location and location != "Wszystkie":
+            self.parent.weather_data.filtered_records = [
+                record for record in self.parent.weather_data.filtered_records
+                if record.location == location
+            ]
         
-        # Filtrowanie po zakresie dat
-        if start_date and end_date:
-            self.parent.weather_data.filter_by_date_range(start_date, end_date)
+        # Filtrowanie po datach
+        start_date = self.filter_start_date.date().toPyDate()
+        end_date = self.filter_end_date.date().toPyDate()
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if start_date <= record.date <= end_date
+        ]
         
         # Filtrowanie po temperaturze
+        min_temp = self.filter_min_temp.value()
+        max_temp = self.filter_max_temp.value()
         self.filter_by_temperature(min_temp, max_temp)
         
         # Filtrowanie po opadach
+        min_precip = self.filter_min_precip.value()
+        max_precip = self.filter_max_precip.value()
         self.filter_by_precipitation(min_precip, max_precip)
         
         # Filtrowanie po nasłonecznieniu
+        min_sunshine = self.filter_min_sunshine.value()
+        max_sunshine = self.filter_max_sunshine.value()
         self.filter_by_sunshine(min_sunshine, max_sunshine)
         
         # Filtrowanie po zachmurzeniu
+        min_cloud = self.filter_min_cloud.value()
+        max_cloud = self.filter_max_cloud.value()
         self.filter_by_cloud_cover(min_cloud, max_cloud)
         
-        # Aktualizacja tabeli
+        # Aktualizacja widoku
         self.update_weather_table(use_filtered=True)
-        
-        # Informacja o liczbie wyników
-        self.parent.status_bar.showMessage(
-            f"Zastosowano filtry: znaleziono {len(self.parent.weather_data.filtered_records)} rekordów", 
-            3000
-        )
+        self.weather_chart.set_weather_data(self.parent.weather_data.filtered_records)
     
     def filter_by_temperature(self, min_temp, max_temp):
         """
@@ -359,41 +363,35 @@ class WeatherPage(QWidget):
         ]
     
     def reset_filters(self):
-        """Resetuje filtry i przywraca wszystkie dane."""
-        if not self.parent.weather_data.records:
-            return
+        """Resetuje wszystkie filtry do wartości domyślnych."""
+        # Reset filtra lokalizacji
+        self.filter_location_combo.setCurrentText("Wszystkie")
         
-        # Resetowanie kontrolek filtrów
-        self.filter_group.reset_combo("location", 0)  # "Wszystkie lokalizacje"
+        # Reset filtra dat
+        if self.parent.weather_data.records:
+            min_date, max_date = self.parent.weather_data.get_date_range()
+            self.filter_start_date.setDate(min_date)
+            self.filter_end_date.setDate(max_date)
         
-        # Resetowanie zakresu dat
-        min_date, max_date = self.parent.weather_data.get_date_range()
-        self.filter_group.reset_date_range(
-            "date_range", 
-            (min_date - QDate.currentDate().toPyDate()).days,
-            (max_date - QDate.currentDate().toPyDate()).days
-        )
+        # Reset filtra temperatury
+        self.filter_min_temp.setValue(-10)
+        self.filter_max_temp.setValue(30)
         
-        # Resetowanie zakresu temperatur
-        self.filter_group.reset_slider("temp", -10, 30)
+        # Reset filtra opadów
+        self.filter_min_precip.setValue(0)
+        self.filter_max_precip.setValue(50)
         
-        # Resetowanie zakresu opadów
-        self.filter_group.reset_slider("precip", 0, 50)
+        # Reset filtra nasłonecznienia
+        self.filter_min_sunshine.setValue(0)
+        self.filter_max_sunshine.setValue(12)
         
-        # Resetowanie zakresu nasłonecznienia
-        self.filter_group.reset_slider("sunshine", 0, 12)
+        # Reset filtra zachmurzenia
+        self.filter_min_cloud.setValue(0)
+        self.filter_max_cloud.setValue(100)
         
-        # Resetowanie zakresu zachmurzenia
-        self.filter_group.reset_slider("cloud", 0, 100)
-        
-        # Resetowanie filtrowanych rekordów
-        self.parent.weather_data.filtered_records = self.parent.weather_data.records.copy()
-        
-        # Aktualizacja tabeli
+        # Aktualizacja widoku
         self.update_weather_table()
-        
-        # Komunikat o zresetowaniu
-        self.parent.status_bar.showMessage("Zresetowano filtry", 3000)
+        self.weather_chart.set_weather_data(self.parent.weather_data.records)
     
     def update_weather_table(self, use_filtered=False):
         """
@@ -449,4 +447,14 @@ class WeatherPage(QWidget):
             # Zachmurzenie
             cloud_item = QTableWidgetItem(f"{record.cloud_cover}")
             cloud_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.weather_table.setItem(i, 7, cloud_item) 
+            self.weather_table.setItem(i, 7, cloud_item)
+    
+    def show_chart_dialog(self):
+        """Wyświetla okno dialogowe z wykresem."""
+        if not self.parent.weather_data.records:
+            self.parent.show_error("Brak danych", "Brak danych do wyświetlenia na wykresie.")
+            return
+            
+        dialog = ChartDialog("weather", self)
+        dialog.set_data(self.parent.weather_data.filtered_records)
+        dialog.exec() 
