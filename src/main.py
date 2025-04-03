@@ -26,11 +26,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rekomendator Tras Turystycznych")
     parser.add_argument("--hot-reload", action="store_true", help="Włącz hot reload (automatyczne przeładowanie przy zmianach)")
     parser.add_argument("--debug", action="store_true", help="Włącz tryb debugowania (więcej logów)")
+    parser.add_argument("--hot-reload-level", action="store_true", help="Ustaw poziom logowania na HOT_RELOAD (logi hot reload i wyższe)")
     args = parser.parse_args()
     
     # Ustawienie poziomu logowania
     if args.debug:
         logger.level = LogLevel.DEBUG
+    elif args.hot_reload_level:
+        logger.level = LogLevel.HOT_RELOAD
     else:
         logger.level = LogLevel.INFO
     
@@ -39,7 +42,7 @@ if __name__ == "__main__":
     # Włączenie hot reload, jeśli wybrano odpowiednią opcję
     reloader = None
     if args.hot_reload:
-        logger.info("Próba włączenia hot reloadu")
+        logger.hot_reload("Próba włączenia hot reloadu")
         reloader = try_enable_hot_reload()
     
     # Inicjalizacja aplikacji Qt

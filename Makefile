@@ -2,7 +2,7 @@
 # Makefile dla projektu Trass Recommendation
 # --------------------------------
 
-.PHONY: help install install-dev install-build dev build clean test docs icons install-deps update-deps run run-hot setup
+.PHONY: help install install-dev install-build dev build test docs icons install-deps update-deps run dev-hot setup dev-hot-logs
 
 # Zmienne srodowiskowe - używamy pełnych ścieżek z ukośnikami w kierunku naprzód
 VENV = venv
@@ -17,15 +17,15 @@ help:
 	@echo "make install-dev     - Instaluje zaleznosci deweloperskie testy, watchdog, dokumentacja"
 	@echo "make install-build   - Instaluje zaleznosci do budowania PyInstaller, Pillow"
 	@echo "make dev             - Uruchamia aplikacje w trybie deweloperskim"
+	@echo "make dev-hot         - Uruchamia aplikacje z hot reloadingiem"
+	@echo "make dev-hot-logs    - Uruchamia aplikacje z hot reloadingiem i tylko logami hot reload"
 	@echo "make run             - Uruchamia aplikacje"
-	@echo "make run-hot         - Uruchamia aplikacje z hot reloadingiem"
 	@echo "make test            - Uruchamia testy"
 	@echo "make build           - Buduje aplikacje jako plik EXE"
 	@echo "make build-debug     - Buduje aplikacje jako plik EXE w trybie debugowania z logami"
 	@echo "make icons           - Generuje ikony aplikacji"
 	@echo "make docs            - Uruchamia serwer dokumentacji"
 	@echo "make docs-build      - Buduje dokumentacje"
-	@echo "make clean           - Czysci pliki tymczasowe"
 	@echo "make setup           - Ustawia PYTHONPATH dla biezacej sesji"
 
 # Instalacja podstawowych zaleznosci
@@ -67,9 +67,14 @@ dev:
 	$(PYTHON) src/main.py --debug
 
 # Uruchomienie aplikacji z hot reloadingiem
-run-hot: 
+dev-hot: 
 	@echo Uruchamianie aplikacji z hot reloadingiem...
 	$(PYTHON) src/main.py --hot-reload --debug
+
+# Uruchomienie aplikacji z hot reloadingiem i tylko logami hot reload
+dev-hot-logs: 
+	@echo Uruchamianie aplikacji z hot reloadingiem i tylko logami hot reload...
+	$(PYTHON) src/main.py --hot-reload --hot-reload-level
 
 # Uruchomienie aplikacji
 run: 
@@ -110,17 +115,6 @@ docs:
 docs-build:
 	@echo Budowanie dokumentacji...
 	$(PNPM) run docs:build
-
-# Czyszczenie plikow tymczasowych
-clean:
-	@echo Czyszczenie plikow tymczasowych...
-	rmdir /S /Q build 2>NUL || echo Katalog build nie istnieje.
-	rmdir /S /Q dist 2>NUL || echo Katalog dist nie istnieje.
-	rmdir /S /Q __pycache__ 2>NUL || echo Katalog __pycache__ nie istnieje.
-	rmdir /S /Q .pytest_cache 2>NUL || echo Katalog .pytest_cache nie istnieje.
-	for /f "delims=" %%i in ('dir /s /b /a:d *__pycache__*') do rmdir /s /q "%%i" 2>NUL
-	for /f "delims=" %%i in ('dir /s /b /a *.pyc') do del "%%i" 2>NUL
-	@echo Czyszczenie zakonczone!
 
 # Ustawienie PYTHONPATH
 setup:

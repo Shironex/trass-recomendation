@@ -42,7 +42,7 @@ class FileChangeHandler(FileSystemEventHandler):
         if not event.is_directory and self._should_handle_event(event.src_path):
             current_time = time.time()
             if current_time - self.last_reload_time >= self.reload_cooldown:
-                logger.debug(f"Wykryto zmianę w pliku: {event.src_path}")
+                logger.hot_reload(f"Wykryto zmianę w pliku: {event.src_path}")
                 if self.reload_callback:
                     # Uruchamiamy callback w nowym wątku, aby uniknąć problemów z wątkami
                     threading.Thread(
@@ -57,7 +57,7 @@ class FileChangeHandler(FileSystemEventHandler):
         if not event.is_directory and self._should_handle_event(event.src_path):
             current_time = time.time()
             if current_time - self.last_reload_time >= self.reload_cooldown:
-                logger.debug(f"Wykryto nowy plik: {event.src_path}")
+                logger.hot_reload(f"Wykryto nowy plik: {event.src_path}")
                 if self.reload_callback:
                     # Uruchamiamy callback w nowym wątku, aby uniknąć problemów z wątkami
                     threading.Thread(
@@ -115,7 +115,7 @@ class HotReloader:
         self.reload_on_change = reload_on_change
         self.observer = None
         
-        logger.debug("Inicjalizacja hot reloadera")
+        logger.hot_reload("Inicjalizacja hot reloadera")
     
     def start(self):
         """Uruchamia obserwowanie plików."""
@@ -133,16 +133,16 @@ class HotReloader:
         self.observer = Observer()
         for directory in self.directories:
             abs_path = Path(directory).absolute()
-            logger.debug(f"Dodawanie katalogu do obserwacji: {abs_path}")
+            logger.hot_reload(f"Dodawanie katalogu do obserwacji: {abs_path}")
             self.observer.schedule(handler, str(abs_path), recursive=True)
         
-        logger.info("Uruchamianie obserwatora plików dla hot reloadu")
+        logger.hot_reload("Uruchamianie obserwatora plików dla hot reloadu")
         self.observer.start()
     
     def stop(self):
         """Zatrzymuje obserwowanie plików."""
         if self.observer:
-            logger.info("Zatrzymywanie hot reloadera")
+            logger.hot_reload("Zatrzymywanie hot reloadera")
             # Używamy funkcji stop bez join, aby uniknąć zakleszczeń wątków
             self.observer.stop()
             # Nie używamy join, gdy jesteśmy w tym samym wątku
@@ -161,7 +161,7 @@ class HotReloader:
         Args:
             changed_file (str): Plik, który został zmieniony
         """
-        logger.info(f"Przeładowywanie aplikacji z powodu zmiany w: {changed_file}")
+        logger.hot_reload(f"Przeładowywanie aplikacji z powodu zmiany w: {changed_file}")
         
         # Wywołaj callback przed zamknięciem aplikacji
         if self.app_exit_callback:
@@ -176,20 +176,20 @@ class HotReloader:
             self.observer = None
         
         # Uruchom nową instancję aplikacji
-        logger.debug("Uruchamianie nowej instancji aplikacji")
+        logger.hot_reload("Uruchamianie nowej instancji aplikacji")
         python = sys.executable
         
         # Przygotowanie argumentów
         script_path = Path(sys.argv[0]).absolute()
         args = [python, str(script_path)] + sys.argv[1:]
         
-        logger.debug(f"Wykonywanie: {' '.join(args)}")
+        logger.hot_reload(f"Wykonywanie: {' '.join(args)}")
         try:
             # Uruchom nową instancję aplikacji
             subprocess.Popen(args)
             
             # Zakończ obecną instancję
-            logger.debug("Kończenie obecnej instancji aplikacji")
+            logger.hot_reload("Kończenie obecnej instancji aplikacji")
             sys.exit(0)
         except Exception as e:
             logger.error(f"Błąd podczas uruchamiania nowej instancji aplikacji: {str(e)}")
@@ -220,7 +220,7 @@ def enable_hot_reload(app_exit_callback=None, directories=None,
         logger.info("Zainstaluj watchdog używając: pip install watchdog")
         return None
     
-    logger.info("Włączanie hot reloadu dla aplikacji")
+    logger.hot_reload("Włączanie hot reloadu dla aplikacji")
     reloader = HotReloader(
         app_exit_callback=app_exit_callback,
         directories=directories,
