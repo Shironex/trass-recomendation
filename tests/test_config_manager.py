@@ -4,7 +4,7 @@ Testy dla klasy Config zarządzającej konfiguracją aplikacji.
 import os
 import json
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from src.config.config import Config
 
 
