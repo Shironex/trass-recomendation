@@ -286,4 +286,227 @@ def test_recommend_routes_limit(route_recommender, sample_trail, sample_weather_
             limit=3
         )
         
-        assert len(recommendations) == 3 
+        assert len(recommendations) == 3
+
+
+def test_calculate_weather_score_invalid_dates(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych datach w obliczaniu oceny pogody."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.side_effect = Exception("Invalid date range")
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 10))  # Data końcowa wcześniejsza niż początkowa
+        )
+        assert score == 0.0
+
+
+def test_recommend_routes_invalid_dates(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych datach w rekomendacji tras."""
+    with patch.object(route_recommender, '_calculate_weather_score') as mock_score:
+        mock_score.side_effect = Exception("Invalid date range")
+        
+        recommendations = route_recommender.recommend_routes(
+            weather_preferences={},
+            trail_params={},
+            start_date=date(2023, 7, 15),
+            end_date=date(2023, 7, 10)  # Data końcowa wcześniejsza niż początkowa
+        )
+        assert len(recommendations) == 0
+
+
+def test_recommend_routes_invalid_preferences(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych preferencjach pogodowych."""
+    with patch.object(route_recommender, '_calculate_weather_score') as mock_score:
+        mock_score.side_effect = Exception("Invalid preferences")
+        
+        recommendations = route_recommender.recommend_routes(
+            weather_preferences={
+                'min_temp': 25.0,
+                'max_temp': 15.0  # Maksymalna temperatura niższa niż minimalna
+            },
+            trail_params={},
+            start_date=date(2023, 7, 15),
+            end_date=date(2023, 7, 15)
+        )
+        assert len(recommendations) == 0
+
+
+def test_generate_weekly_recommendation_invalid_dates(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych datach w generowaniu rekomendacji tygodniowej."""
+    with patch.object(route_recommender, 'recommend_routes') as mock_recommend:
+        mock_recommend.return_value = []  # Symulujemy brak rekomendacji zamiast rzucania wyjątku
+        
+        recommendations = route_recommender.generate_weekly_recommendation(
+            weather_preferences={},
+            trail_params={},
+            start_date=date(2023, 7, 15)
+        )
+        assert len(recommendations) == 7  # Powinniśmy mieć 7 dni
+        assert all(len(recs) == 0 for recs in recommendations.values())  # Każdy dzień powinien mieć pustą listę
+
+
+def test_generate_weekly_recommendation_invalid_preferences(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych preferencjach w generowaniu rekomendacji tygodniowej."""
+    with patch.object(route_recommender, 'recommend_routes') as mock_recommend:
+        mock_recommend.return_value = []  # Symulujemy brak rekomendacji zamiast rzucania wyjątku
+        
+        recommendations = route_recommender.generate_weekly_recommendation(
+            weather_preferences={
+                'min_temp': 25.0,
+                'max_temp': 15.0  # Maksymalna temperatura niższa niż minimalna
+            },
+            trail_params={},
+            start_date=date(2023, 7, 15)
+        )
+        assert len(recommendations) == 7  # Powinniśmy mieć 7 dni
+        assert all(len(recs) == 0 for recs in recommendations.values())  # Każdy dzień powinien mieć pustą listę
+
+
+def test_calculate_statistics_invalid_data(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych danych statystycznych."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = None  # Symulujemy brak danych
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15))
+        )
+        assert score == 0.0
+
+
+def test_calculate_statistics_missing_fields(route_recommender):
+    """Test obsługi błędów przy brakujących polach w danych statystycznych."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {
+            'avg_temperature': 20.0
+            # Brak pozostałych wymaganych pól
+        }
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15))
+        )
+        assert score == 0.0
+
+
+def test_calculate_statistics_invalid_values(route_recommender):
+    """Test obsługi błędów przy nieprawidłowych wartościach w danych statystycznych."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {
+            'avg_temperature': 'invalid',
+            'total_precipitation': -1.0,
+            'sunny_days_count': 'invalid'
+        }
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15))
+        )
+        assert score == 0.0
+
+
+def test_calculate_weather_score_missing_stats(route_recommender):
+    """Test obliczania oceny pogody przy brakujących statystykach."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {}  # Puste statystyki
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15))
+        )
+        assert score == 0.0
+
+
+def test_recommend_routes_error_preparing_results(route_recommender, sample_trail):
+    """Test obsługi błędów przy przygotowywaniu wyników rekomendacji."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {
+            'avg_temperature': 20.0,
+            'total_precipitation': 0.0,
+            'sunny_days_count': 1
+        }
+        
+        # Modyfikujemy obiekt trasy, aby wywołać błąd przy dostępie do atrybutów
+        broken_trail = sample_trail
+        delattr(broken_trail, 'terrain_type')  # Usuwamy atrybut, który jest używany w wynikach
+        route_recommender.trail_data.trails = [broken_trail]
+        
+        recommendations = route_recommender.recommend_routes(
+            weather_preferences={},
+            trail_params={},
+            start_date=date(2023, 7, 15),
+            end_date=date(2023, 7, 15)
+        )
+        assert len(recommendations) == 0
+
+
+def test_generate_weekly_recommendation_error_handling(route_recommender):
+    """Test obsługi błędów w generowaniu rekomendacji tygodniowych."""
+    with patch.object(route_recommender, 'recommend_routes') as mock_recommend:
+        # Symulujemy błąd dla niektórych dni
+        def side_effect(*args, **kwargs):
+            if kwargs.get('start_date') and kwargs.get('end_date'):
+                if kwargs['start_date'].day % 2 == 0:
+                    return []  # Dla parzystych dni zwracamy pustą listę
+                return [{'id': 'test', 'name': 'Test Trail'}]  # Dla nieparzystych zwracamy przykładową trasę
+            return []
+        
+        mock_recommend.side_effect = side_effect
+        
+        recommendations = route_recommender.generate_weekly_recommendation(
+            weather_preferences={},
+            trail_params={},
+            start_date=date(2023, 7, 15)
+        )
+        
+        assert len(recommendations) == 7  # Powinniśmy mieć wpisy dla wszystkich dni
+        # Sprawdzamy, czy mamy odpowiednie rekomendacje dla każdego dnia
+        for day, recs in recommendations.items():
+            assert isinstance(recs, list)
+            if day.day % 2 == 0:
+                assert len(recs) == 0  # Parzyste dni powinny mieć puste listy
+            else:
+                assert len(recs) == 1  # Nieparzyste dni powinny mieć jedną rekomendację
+
+
+def test_calculate_weather_score_invalid_preferences(route_recommender):
+    """Test obliczania oceny pogody przy nieprawidłowych preferencjach pogodowych."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {
+            'avg_temperature': 20.0,
+            'total_precipitation': 0.0,
+            'sunny_days_count': 1
+        }
+        
+        # Test z nieprawidłowymi wartościami preferencji
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15)),
+            min_temp='invalid',  # Nieprawidłowy typ
+            max_temp=25.0,
+            max_precipitation=5.0,
+            min_sunshine_hours=4.0
+        )
+        assert score == 0.0  # Powinniśmy otrzymać 0 przy nieprawidłowych preferencjach 
+
+def test_calculate_weather_score_error_in_calculation(route_recommender):
+    """Test obsługi błędów podczas obliczeń w _calculate_weather_score."""
+    with patch.object(route_recommender.weather_data, 'calculate_statistics') as mock_stats:
+        mock_stats.return_value = {
+            'avg_temperature': 20.0,
+            'total_precipitation': 0.0,
+            'sunny_days_count': 1,
+            'avg_sunshine_hours': None  # Nieprawidłowa wartość, która spowoduje błąd w obliczeniach
+        }
+        
+        score = route_recommender._calculate_weather_score(
+            "Test Region",
+            (date(2023, 7, 15), date(2023, 7, 15)),
+            min_temp=15.0,
+            max_temp=25.0,
+            max_precipitation=5.0,
+            min_sunshine_hours=4.0,
+            max_sunshine_hours=8.0
+        )
+        assert score == 0.0  # Powinniśmy otrzymać 0 przy błędzie w obliczeniach 
