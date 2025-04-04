@@ -143,6 +143,9 @@ class ApiClient:
             
         Returns:
             Słownik z danymi pogodowymi.
+            
+        Raises:
+            ConnectionError: Gdy nie udało się nawiązać połączenia z API.
         """
         try:
             api_key = self.api_keys["openweathermap"]
@@ -155,6 +158,9 @@ class ApiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z OpenWeatherMap: {str(e)}")
+        except Exception as e:
+            logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
+            raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
     
     def _get_weatherapi_forecast(self, location: str, days: int) -> Dict:
         """
@@ -166,6 +172,9 @@ class ApiClient:
             
         Returns:
             Słownik z danymi pogodowymi.
+            
+        Raises:
+            ConnectionError: Gdy nie udało się nawiązać połączenia z API.
         """
         try:
             api_key = self.api_keys["weatherapi"]
@@ -178,6 +187,9 @@ class ApiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z WeatherAPI: {str(e)}")
+        except Exception as e:
+            logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
+            raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
     
     def _get_visualcrossing_forecast(self, location: str, days: int) -> Dict:
         """
@@ -189,6 +201,9 @@ class ApiClient:
             
         Returns:
             Słownik z danymi pogodowymi.
+            
+        Raises:
+            ConnectionError: Gdy nie udało się nawiązać połączenia z API.
         """
         try:
             api_key = self.api_keys["visualcrossing"]
@@ -201,6 +216,9 @@ class ApiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z Visual Crossing: {str(e)}")
+        except Exception as e:
+            logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
+            raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
     
     def _parse_openweathermap_data(self, data: Dict) -> List[WeatherRecord]:
         """
@@ -281,6 +299,11 @@ class ApiClient:
         weather_records = []
         for day in data["forecast"]["forecastday"]:
             forecast_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
+            
+            # Obliczanie godzin słonecznych na podstawie zachmurzenia
+            cloud_cover = day["day"].get("avghumidity", 50)  # Używamy wilgotności jako przybliżenia zachmurzenia
+            sunshine_hours = 24 * (1 - cloud_cover / 100)  # Im większe zachmurzenie, tym mniej słońca
+            
             weather_records.append(
                 WeatherRecord(
                     date=forecast_date,
@@ -289,8 +312,8 @@ class ApiClient:
                     min_temp=day["day"]["mintemp_c"],
                     max_temp=day["day"]["maxtemp_c"],
                     precipitation=day["day"]["totalprecip_mm"],
-                    sunshine_hours=24 - (day["day"]["daily_will_it_rain"] * 24 * day["day"]["daily_chance_of_rain"] / 100),
-                    cloud_cover=int(sum(hour["cloud"] for hour in day["hour"]) / 24)
+                    sunshine_hours=sunshine_hours,
+                    cloud_cover=int(cloud_cover)
                 )
             )
         return weather_records
