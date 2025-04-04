@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlencode
 from src.utils import logger
 from src.core.trail_data import TrailRecord
 from src.core.weather_data import WeatherRecord
@@ -24,8 +25,6 @@ class ApiClient:
     
     # Adresy do popularnych API
     WEATHER_APIS = {
-        "openweathermap": "https://api.openweathermap.org/data/2.5",
-        "weatherapi": "https://api.weatherapi.com/v1",
         "visualcrossing": "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services"
     }
     
@@ -35,7 +34,7 @@ class ApiClient:
         
         Args:
             api_keys: Słownik zawierający klucze API dla różnych serwisów.
-                      Format: {"openweathermap": "klucz", "weatherapi": "klucz"}.
+                      Format: {"visualcrossing": "klucz"}.
             cache_dir: Katalog do przechowywania pamięci podręcznej pobranych danych.
         """
         self.api_keys = api_keys or {}
@@ -60,16 +59,20 @@ class ApiClient:
         logger.debug(f"Ustawiono klucz API dla serwisu: {service}")
     
     def get_weather_forecast(self, 
-                            service: str, 
-                            location: str, 
-                            days: int = 7) -> List[WeatherRecord]:
+                           service: str, 
+                           location: str, 
+                           days: int = None,
+                           start_date: str = None,
+                           end_date: str = None) -> List[WeatherRecord]:
         """
         Pobiera prognozę pogody dla danej lokalizacji.
         
         Args:
-            service: Nazwa serwisu API (np. 'openweathermap', 'weatherapi').
+            service: Nazwa serwisu API ('visualcrossing').
             location: Nazwa lokalizacji lub współrzędne geograficzne.
-            days: Liczba dni prognozy (domyślnie 7).
+            days: Liczba dni prognozy (opcjonalne, używane tylko gdy nie podano zakresu dat).
+            start_date: Data początkowa w formacie YYYY-MM-DD (opcjonalne).
+            end_date: Data końcowa w formacie YYYY-MM-DD (opcjonalne).
             
         Returns:
             Lista obiektów WeatherRecord zawierających prognozę pogody.
@@ -87,7 +90,7 @@ class ApiClient:
             raise ValueError(f"Brak klucza API dla serwisu: {service}")
         
         # Sprawdzenie cache przed wykonaniem zapytania
-        cache_key = f"{service}_{location}_{days}"
+        cache_key = f"{service}_{location}_{days}_{start_date}_{end_date}"
         cached_data = self.load_api_response_from_cache(service, cache_key)
         
         if cached_data:
@@ -97,15 +100,8 @@ class ApiClient:
             except Exception as e:
                 logger.warn(f"Nie udało się przetworzyć danych z cache: {str(e)}")
         
-        # Wykonanie żądania do odpowiedniego API
-        if service == "openweathermap":
-            data = self._get_openweathermap_forecast(location, days)
-        elif service == "weatherapi":
-            data = self._get_weatherapi_forecast(location, days)
-        elif service == "visualcrossing":
-            data = self._get_visualcrossing_forecast(location, days)
-        else:
-            raise ValueError(f"Brak implementacji dla serwisu: {service}")
+        # Wykonanie żądania do API
+        data = self._get_visualcrossing_forecast(location, days, start_date, end_date)
         
         # Zapisanie odpowiedzi do cache
         if data:
@@ -115,7 +111,7 @@ class ApiClient:
     
     def _parse_weather_data(self, service: str, data: Dict) -> List[WeatherRecord]:
         """
-        Parsuje dane pogodowe z różnych serwisów do jednolitego formatu.
+        Parsuje dane pogodowe z serwisu do jednolitego formatu.
         
         Args:
             service: Nazwa serwisu API.
@@ -124,91 +120,68 @@ class ApiClient:
         Returns:
             Lista obiektów WeatherRecord.
         """
-        if service == "openweathermap":
-            return self._parse_openweathermap_data(data)
-        elif service == "weatherapi":
-            return self._parse_weatherapi_data(data)
-        elif service == "visualcrossing":
-            return self._parse_visualcrossing_data(data)
-        else:
-            raise ValueError(f"Brak implementacji parsera dla serwisu: {service}")
+        return self._parse_visualcrossing_data(data)
     
-    def _get_openweathermap_forecast(self, location: str, days: int) -> Dict:
-        """
-        Pobiera prognozę pogody z OpenWeatherMap.
-        
-        Args:
-            location: Nazwa lokalizacji lub współrzędne geograficzne.
-            days: Liczba dni prognozy.
-            
-        Returns:
-            Słownik z danymi pogodowymi.
-            
-        Raises:
-            ConnectionError: Gdy nie udało się nawiązać połączenia z API.
-        """
-        try:
-            api_key = self.api_keys["openweathermap"]
-            url = f"{self.WEATHER_APIS['openweathermap']}/forecast?q={location}&appid={api_key}&units=metric"
-            
-            response = requests.get(url)
-            response.raise_for_status()
-            return response.json()
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
-            raise ConnectionError(f"Nie udało się pobrać prognozy z OpenWeatherMap: {str(e)}")
-        except Exception as e:
-            logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
-            raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z OpenWeatherMap: {str(e)}")
-    
-    def _get_weatherapi_forecast(self, location: str, days: int) -> Dict:
-        """
-        Pobiera prognozę pogody z WeatherAPI.com.
-        
-        Args:
-            location: Nazwa lokalizacji lub współrzędne geograficzne.
-            days: Liczba dni prognozy.
-            
-        Returns:
-            Słownik z danymi pogodowymi.
-            
-        Raises:
-            ConnectionError: Gdy nie udało się nawiązać połączenia z API.
-        """
-        try:
-            api_key = self.api_keys["weatherapi"]
-            url = f"{self.WEATHER_APIS['weatherapi']}/forecast.json?key={api_key}&q={location}&days={days}"
-            
-            response = requests.get(url)
-            response.raise_for_status()
-            return response.json()
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
-            raise ConnectionError(f"Nie udało się pobrać prognozy z WeatherAPI: {str(e)}")
-        except Exception as e:
-            logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
-            raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z WeatherAPI: {str(e)}")
-    
-    def _get_visualcrossing_forecast(self, location: str, days: int) -> Dict:
+    def _get_visualcrossing_forecast(self, location: str, days: int = None, start_date: str = None, end_date: str = None) -> Dict:
         """
         Pobiera prognozę pogody z Visual Crossing Weather.
         
         Args:
             location: Nazwa lokalizacji lub współrzędne geograficzne.
-            days: Liczba dni prognozy.
+            days: Liczba dni prognozy (opcjonalne, używane tylko gdy nie podano zakresu dat).
+            start_date: Data początkowa w formacie YYYY-MM-DD (opcjonalne).
+            end_date: Data końcowa w formacie YYYY-MM-DD (opcjonalne).
             
         Returns:
             Słownik z danymi pogodowymi.
             
         Raises:
             ConnectionError: Gdy nie udało się nawiązać połączenia z API.
+            ValueError: Gdy podano nieprawidłowy zakres dat.
         """
         try:
             api_key = self.api_keys["visualcrossing"]
-            url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}/{days}days?key={api_key}&unitGroup=metric"
             
+            # Budowanie ścieżki URL w zależności od parametrów
+            if start_date and end_date:
+                # Sprawdzenie formatu dat
+                try:
+                    datetime.strptime(start_date, "%Y-%m-%d")
+                    datetime.strptime(end_date, "%Y-%m-%d")
+                except ValueError as e:
+                    raise ValueError("Nieprawidłowy format daty. Użyj formatu YYYY-MM-DD") from e
+                
+                # Użyj zakresu dat w URL
+                base_url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}/{start_date}/{end_date}"
+            elif start_date:
+                # Jeśli podano tylko datę początkową, pobierz dane dla jednego dnia
+                try:
+                    datetime.strptime(start_date, "%Y-%m-%d")
+                except ValueError as e:
+                    raise ValueError("Nieprawidłowy format daty. Użyj formatu YYYY-MM-DD") from e
+                
+                base_url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}/{start_date}"
+            else:
+                # Jeśli nie podano dat, użyj podstawowego URL (domyślnie 15 dni)
+                base_url = f"{self.WEATHER_APIS['visualcrossing']}/timeline/{location}"
+            
+            # Dodanie parametrów zapytania
+            params = {
+                'key': api_key,
+                'unitGroup': 'metric'
+            }
+            
+            # Jeśli podano konkretną liczbę dni (bez zakresu dat), dodaj parametr
+            if days is not None and not (start_date or end_date):
+                if days <= 0 or days > 15:
+                    raise ValueError("Liczba dni musi być z zakresu 1-15")
+                params['include'] = 'days'
+                
+            # Kodowanie parametrów URL
+            encoded_params = urlencode(params)
+            url = f"{base_url}?{encoded_params}"
+            
+            logger.debug(f"Wysyłanie zapytania do Visual Crossing API: {url}")
             response = requests.get(url)
             response.raise_for_status()
             return response.json()
@@ -216,112 +189,67 @@ class ApiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
             raise ConnectionError(f"Nie udało się pobrać prognozy z Visual Crossing: {str(e)}")
+        except ValueError as e:
+            logger.error(f"Błąd walidacji parametrów: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"Nieoczekiwany błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
             raise ConnectionError(f"Nieoczekiwany błąd podczas pobierania prognozy z Visual Crossing: {str(e)}")
     
-    def _parse_openweathermap_data(self, data: Dict) -> List[WeatherRecord]:
+    def _parse_visualcrossing_data(self, data: Dict) -> List[WeatherRecord]:
         """
-        Parsuje dane z OpenWeatherMap.
+        Parsuje dane z Visual Crossing Weather.
         
         Args:
-            data: Surowe dane z API OpenWeatherMap.
+            data: Surowe dane z API Visual Crossing.
             
         Returns:
             Lista obiektów WeatherRecord.
         """
         weather_records = []
-        current_date = None
-        daily_data = {}
         
-        # Posortuj dane według daty (mogą być nieuporządkowane)
-        sorted_forecasts = sorted(data["list"], key=lambda x: x["dt"])
+        # Sprawdzenie, czy dane zawierają oczekiwane pola
+        if "days" not in data:
+            logger.error("Brak danych o prognozie w odpowiedzi z Visual Crossing API")
+            return weather_records
         
-        for item in sorted_forecasts:
-            forecast_date = datetime.fromtimestamp(item["dt"]).date()
-            
-            if current_date != forecast_date:
-                if current_date and daily_data["count"] > 0:
-                    # Zapisz poprzedni dzień
-                    weather_records.append(
-                        WeatherRecord(
-                            date=current_date,
-                            location_id=data["city"]["name"],
-                            avg_temp=daily_data["temp_sum"] / daily_data["count"],
-                            min_temp=daily_data["min_temp"],
-                            max_temp=daily_data["max_temp"],
-                            precipitation=daily_data["precipitation_sum"],
-                            sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
-                            cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
-                        )
-                    )
+        # Pobranie nazwy lokalizacji
+        location_name = data.get("resolvedAddress", "Unknown")
+        
+        # Parsowanie danych dla każdego dnia
+        for day in data["days"]:
+            try:
+                # Konwersja daty z formatu ISO
+                forecast_date = datetime.strptime(day["datetime"], "%Y-%m-%d").date()
                 
-                # Zainicjuj nowy dzień
-                current_date = forecast_date
-                daily_data = {
-                    "temp_sum": 0,
-                    "min_temp": float('inf'),
-                    "max_temp": float('-inf'),
-                    "precipitation_sum": 0,
-                    "cloud_sum": 0,
-                    "count": 0
-                }
-            
-            # Aktualizacja danych dziennych
-            temp = item["main"]["temp"]
-            daily_data["temp_sum"] += temp
-            daily_data["min_temp"] = min(daily_data["min_temp"], item["main"]["temp_min"])
-            daily_data["max_temp"] = max(daily_data["max_temp"], item["main"]["temp_max"])
-            daily_data["precipitation_sum"] += item.get("rain", {}).get("3h", 0)
-            daily_data["cloud_sum"] += item["clouds"]["all"]
-            daily_data["count"] += 1
-        
-        # Dodaj ostatni dzień
-        if current_date and daily_data["count"] > 0:
-            weather_records.append(
-                WeatherRecord(
-                    date=current_date,
-                    location_id=data["city"]["name"],
-                    avg_temp=daily_data["temp_sum"] / daily_data["count"],
-                    min_temp=daily_data["min_temp"],
-                    max_temp=daily_data["max_temp"],
-                    precipitation=daily_data["precipitation_sum"],
-                    sunshine_hours=12.0 - (daily_data["cloud_sum"] / daily_data["count"]) * 0.12,
-                    cloud_cover=int(daily_data["cloud_sum"] / daily_data["count"])
+                # Pobranie danych pogodowych
+                avg_temp = day.get("temp", 0)
+                min_temp = day.get("tempmin", 0)
+                max_temp = day.get("tempmax", 0)
+                precipitation = day.get("precip", 0)
+                
+                # Obliczanie godzin słonecznych na podstawie zachmurzenia
+                cloud_cover = day.get("cloudcover", 50)
+                sunshine_hours = 24 * (1 - cloud_cover / 100)  # Im większe zachmurzenie, tym mniej słońca
+                
+                # Tworzenie rekordu pogodowego
+                weather_records.append(
+                    WeatherRecord(
+                        date=forecast_date,
+                        location_id=location_name,
+                        avg_temp=avg_temp,
+                        min_temp=min_temp,
+                        max_temp=max_temp,
+                        precipitation=precipitation,
+                        sunshine_hours=sunshine_hours,
+                        cloud_cover=int(cloud_cover)
+                    )
                 )
-            )
+            except Exception as e:
+                logger.error(f"Błąd podczas parsowania danych z Visual Crossing API: {str(e)}")
+                continue
         
-        logger.info(f"Sparsowano prognozę pogody dla {len(weather_records)} dni z OpenWeatherMap")
-        return weather_records
-    
-    def _parse_weatherapi_data(self, data: Dict) -> List[WeatherRecord]:
-        """Parsuje dane z WeatherAPI.com."""
-        weather_records = []
-        for day in data["forecast"]["forecastday"]:
-            forecast_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
-            
-            # Obliczanie godzin słonecznych na podstawie zachmurzenia
-            cloud_cover = day["day"].get("avghumidity", 50)  # Używamy wilgotności jako przybliżenia zachmurzenia
-            sunshine_hours = 24 * (1 - cloud_cover / 100)  # Im większe zachmurzenie, tym mniej słońca
-            
-            weather_records.append(
-                WeatherRecord(
-                    date=forecast_date,
-                    location_id=data["location"]["name"],
-                    avg_temp=day["day"]["avgtemp_c"],
-                    min_temp=day["day"]["mintemp_c"],
-                    max_temp=day["day"]["maxtemp_c"],
-                    precipitation=day["day"]["totalprecip_mm"],
-                    sunshine_hours=sunshine_hours,
-                    cloud_cover=int(cloud_cover)
-                )
-            )
-        return weather_records
-    
-    def _parse_visualcrossing_data(self, data: Dict) -> List[WeatherRecord]:
-        """Parsuje dane z Visual Crossing Weather."""
-        weather_records = []
-        # Implementacja parsowania danych z Visual Crossing
+        logger.info(f"Sparsowano {len(weather_records)} rekordów pogodowych z Visual Crossing API")
         return weather_records
     
     def save_api_response_to_cache(self, service: str, query: str, data: Dict) -> None:
@@ -388,21 +316,15 @@ class ApiClient:
                 logger.error(f"Nieznany serwis API: {service}")
                 return False
                 
-            if service not in self.api_keys and service != "openweathermap":
+            if service not in self.api_keys:
                 logger.error(f"Brak klucza API dla serwisu {service}")
                 return False
                 
-            # Proste sprawdzenie dostępności API
-            if service == "openweathermap":
-                # Specjalne sprawdzenie dla OpenWeatherMap
-                import requests
-                url = f"{self.WEATHER_APIS[service]}/weather?q=Warsaw&appid={self.api_keys.get(service, '')}"
-                response = requests.get(url, timeout=5)
-                return response.status_code == 200
-            else:
-                # Dla innych serwisów
-                records = self.get_weather_forecast(service, "Warsaw", 1)
-                return len(records) > 0
+            api_key = self.api_keys[service]
+            url = f"{self.WEATHER_APIS[service]}/timeline/Warsaw?key={api_key}&unitGroup=metric"
+            
+            response = requests.get(url, timeout=5)
+            return response.status_code == 200
                 
         except Exception as e:
             logger.error(f"Błąd podczas testowania API {service}: {str(e)}")

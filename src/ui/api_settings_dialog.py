@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame
 )
 from PyQt6.QtCore import pyqtSignal, Qt
+from urllib.parse import urlencode
 from src.core import ApiClient
 from src.config import Config
 
@@ -51,42 +52,6 @@ class ApiSettingsDialog(QDialog):
         
         weather_layout = QVBoxLayout(weather_tab)
         
-        # OpenWeatherMap
-        owm_group = QGroupBox("OpenWeatherMap")
-        weather_layout.addWidget(owm_group)
-        
-        owm_layout = QFormLayout(owm_group)
-        owm_key = QLineEdit()
-        owm_key.setEchoMode(QLineEdit.EchoMode.Password)
-        owm_key.setPlaceholderText("Wprowadź klucz API")
-        owm_layout.addRow("Klucz API:", owm_key)
-        
-        owm_test_btn = QPushButton("Testuj połączenie")
-        owm_test_btn.clicked.connect(
-            lambda: self.test_weather_api("openweathermap", owm_key.text())
-        )
-        owm_layout.addRow("", owm_test_btn)
-        
-        self.api_widgets["openweathermap"] = owm_key
-        
-        # WeatherAPI
-        weatherapi_group = QGroupBox("WeatherAPI.com")
-        weather_layout.addWidget(weatherapi_group)
-        
-        weatherapi_layout = QFormLayout(weatherapi_group)
-        weatherapi_key = QLineEdit()
-        weatherapi_key.setEchoMode(QLineEdit.EchoMode.Password)
-        weatherapi_key.setPlaceholderText("Wprowadź klucz API")
-        weatherapi_layout.addRow("Klucz API:", weatherapi_key)
-        
-        weatherapi_test_btn = QPushButton("Testuj połączenie")
-        weatherapi_test_btn.clicked.connect(
-            lambda: self.test_weather_api("weatherapi", weatherapi_key.text())
-        )
-        weatherapi_layout.addRow("", weatherapi_test_btn)
-        
-        self.api_widgets["weatherapi"] = weatherapi_key
-        
         # Visual Crossing
         visualcrossing_group = QGroupBox("Visual Crossing Weather")
         weather_layout.addWidget(visualcrossing_group)
@@ -99,7 +64,7 @@ class ApiSettingsDialog(QDialog):
         
         visualcrossing_test_btn = QPushButton("Testuj połączenie")
         visualcrossing_test_btn.clicked.connect(
-            lambda: self.test_weather_api("visualcrossing", visualcrossing_key.text())
+            lambda: self.test_api_connection("visualcrossing", visualcrossing_key.text())
         )
         visualcrossing_layout.addRow("", visualcrossing_test_btn)
         
@@ -123,61 +88,6 @@ class ApiSettingsDialog(QDialog):
         info_content = QWidget()
         info_content_layout = QVBoxLayout(info_content)
         info_scroll.setWidget(info_content)
-        
-        # Sekcja OpenWeatherMap
-        owm_info = QGroupBox("OpenWeatherMap")
-        info_content_layout.addWidget(owm_info)
-        owm_info_layout = QVBoxLayout(owm_info)
-        owm_info_text = QLabel(
-            "<h3>OpenWeatherMap</h3>"
-            "<p>Popularny serwis pogodowy, idealny dla aplikacji miejskich.</p>"
-            "<p><b>Główne cechy:</b></p>"
-            "<ul>"
-            "<li>Darmowy plan: do 60 zapytań na minutę</li>"
-            "<li>Dane pogodowe z 5-dniową prognozą</li>"
-            "<li>Temperatura, opady, zachmurzenie, wiatr</li>"
-            "<li>Wysoka dokładność dla większych miast</li>"
-            "</ul>"
-            "<p><b>Jak zdobyć klucz API:</b></p>"
-            "<ol>"
-            "<li>Wejdź na stronę <a href='https://openweathermap.org/api'>OpenWeatherMap API</a></li>"
-            "<li>Zarejestruj się i zaloguj</li>"
-            "<li>Wybierz darmowy plan</li>"
-            "<li>Wygeneruj klucz API w panelu użytkownika</li>"
-            "</ol>"
-        )
-        owm_info_text.setWordWrap(True)
-        owm_info_text.setTextFormat(Qt.TextFormat.RichText)
-        owm_info_text.setOpenExternalLinks(True)
-        owm_info_layout.addWidget(owm_info_text)
-        
-        # Sekcja WeatherAPI
-        weatherapi_info = QGroupBox("WeatherAPI.com")
-        info_content_layout.addWidget(weatherapi_info)
-        weatherapi_info_layout = QVBoxLayout(weatherapi_info)
-        weatherapi_info_text = QLabel(
-            "<h3>WeatherAPI.com</h3>"
-            "<p>Nowoczesne API z bogatym zestawem funkcji i wysokim limitem zapytań.</p>"
-            "<p><b>Główne cechy:</b></p>"
-            "<ul>"
-            "<li>Darmowy plan: do 1,000,000 zapytań miesięcznie</li>"
-            "<li>14-dniowa prognoza pogody</li>"
-            "<li>Szczegółowe dane o temperaturze i opadach</li>"
-            "<li>Dane historyczne do 7 dni wstecz</li>"
-            "<li>Doskonała dokumentacja i wsparcie</li>"
-            "</ul>"
-            "<p><b>Jak zdobyć klucz API:</b></p>"
-            "<ol>"
-            "<li>Odwiedź stronę <a href='https://www.weatherapi.com/'>WeatherAPI.com</a></li>"
-            "<li>Kliknij 'Get Started Free'</li>"
-            "<li>Zarejestruj się i potwierdź email</li>"
-            "<li>Klucz API będzie dostępny w panelu użytkownika</li>"
-            "</ol>"
-        )
-        weatherapi_info_text.setWordWrap(True)
-        weatherapi_info_text.setTextFormat(Qt.TextFormat.RichText)
-        weatherapi_info_text.setOpenExternalLinks(True)
-        weatherapi_info_layout.addWidget(weatherapi_info_text)
         
         # Sekcja Visual Crossing
         vc_info = QGroupBox("Visual Crossing Weather")
@@ -326,9 +236,9 @@ class ApiSettingsDialog(QDialog):
         if directory:
             line_edit.setText(directory)
     
-    def test_weather_api(self, service, api_key):
+    def test_api_connection(self, service: str, api_key: str):
         """
-        Testuje połączenie z API pogodowym.
+        Testuje połączenie z API.
         
         Args:
             service: Nazwa serwisu API.
@@ -346,34 +256,19 @@ class ApiSettingsDialog(QDialog):
             # Tymczasowy klient API do testów
             api_client = ApiClient({service: api_key})
             
-            # Sprawdzenie dostępności API poprzez proste zapytanie
-            if service == "openweathermap":
-                # Używamy prostego zapytania o aktualne warunki pogodowe zamiast prognozy
-                import requests
-                url = f"https://api.openweathermap.org/data/2.5/weather?q=Warsaw&appid={api_key}&units=metric"
-                response = requests.get(url)
-                response.raise_for_status()
+            # Używamy metody test_weather_api z ApiClient
+            if api_client.test_weather_api(service):
                 QMessageBox.information(
                     self,
                     "Test udany",
                     f"Połączenie z API {service} działa poprawnie."
                 )
             else:
-                # Dla innych API używamy standardowej metody
-                records = api_client.get_weather_forecast(service, "Warszawa", 1)
-                
-                if records:
-                    QMessageBox.information(
-                        self,
-                        "Test udany",
-                        f"Połączenie z API {service} działa poprawnie."
-                    )
-                else:
-                    QMessageBox.warning(
-                        self,
-                        "Test nieudany",
-                        f"Połączenie z API {service} nie zwróciło wyników."
-                    )
+                QMessageBox.warning(
+                    self,
+                    "Test nieudany",
+                    f"Połączenie z API {service} nie działa poprawnie."
+                )
         
         except Exception as e:
             QMessageBox.critical(

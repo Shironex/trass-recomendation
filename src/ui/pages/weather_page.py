@@ -4,7 +4,7 @@ Strona danych pogodowych aplikacji.
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidgetItem, QSplitter
+    QTableWidgetItem
 )
 from PyQt6.QtCore import Qt, QDate
 from src.utils import logger
@@ -49,7 +49,7 @@ class WeatherPage(QWidget):
         self.api_service_combo = self.api_form.add_combo_field(
             "api_service", 
             "Serwis API", 
-            ["openweathermap", "weatherapi", "visualcrossing"]
+            ["visualcrossing"]
         )
         
         # Lokalizacja
@@ -64,9 +64,13 @@ class WeatherPage(QWidget):
         self.start_date_edit, self.end_date_edit = self.api_form.add_date_range(
             "date_range",
             "Zakres dat",
-            default_start_days=-7,
-            default_end_days=0
+            default_start_days=0,  # Dzisiaj
+            default_end_days=15    # Domyślnie 15 dni dla Visual Crossing
         )
+        
+        # Podłączenie sygnałów zmiany dat
+        self.start_date_edit.dateChanged.connect(self.validate_date_range)
+        self.end_date_edit.dateChanged.connect(self.validate_date_range)
         
         # Przycisk pobierania
         self.api_form.add_submit_button("Pobierz prognozę")
@@ -152,6 +156,34 @@ class WeatherPage(QWidget):
         self.weather_chart = WeatherChart()
         self.weather_chart.hide()
     
+    def validate_date_range(self):
+        """Sprawdza i koryguje zakres dat."""
+        start_date = self.start_date_edit.date()
+        end_date = self.end_date_edit.date()
+        today = QDate.currentDate()
+        
+        # Sprawdzenie czy daty nie są z przeszłości
+        if start_date < today:
+            self.start_date_edit.setDate(today)
+            start_date = today
+        
+        if end_date < today:
+            self.end_date_edit.setDate(today)
+            end_date = today
+        
+        # Maksymalna liczba dni dla Visual Crossing API
+        max_days = 15
+        max_allowed_date = today.addDays(max_days - 1)
+        
+        # Sprawdzenie czy końcowa data nie przekracza maksymalnej
+        if end_date > max_allowed_date:
+            self.end_date_edit.setDate(max_allowed_date)
+            end_date = max_allowed_date
+        
+        # Sprawdzenie czy data początkowa nie jest późniejsza niż końcowa
+        if start_date > end_date:
+            self.start_date_edit.setDate(end_date)
+    
     def fetch_forecast(self, data=None):
         """
         Pobiera prognozę pogody z wybranego API.
@@ -172,8 +204,17 @@ class WeatherPage(QWidget):
             start_date = self.start_date_edit.date().toPyDate()
             end_date = self.end_date_edit.date().toPyDate()
         
-        # Oblicz liczbę dni między datami
-        days = (end_date - start_date).days + 1
+        # Sprawdzenie zakresu dat
+        days_diff = (end_date - start_date).days + 1
+        max_days = 15
+        
+        if days_diff > max_days:
+            self.parent.show_error(
+                "Nieprawidłowy zakres dat",
+                f"Serwis {service} pozwala na maksymalnie {max_days} dni prognozy.\n"
+                f"Wybrany zakres to {days_diff} dni."
+            )
+            return
         
         if not self.parent.api_client.api_keys.get(service):
             self.parent.show_error(
@@ -184,9 +225,12 @@ class WeatherPage(QWidget):
             return
         
         try:
-            # Pobieranie prognozy na wskazaną liczbę dni
+            # Dla Visual Crossing używamy zakresu dat
             weather_records = self.parent.api_client.get_weather_forecast(
-                service, location, days=days
+                service, 
+                location, 
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=end_date.strftime("%Y-%m-%d")
             )
             
             if not weather_records:
@@ -213,7 +257,7 @@ class WeatherPage(QWidget):
             info_message = (
                 f"Pomyślnie pobrano prognozę pogody dla lokalizacji {location} "
                 f"na okres od {min_date.strftime('%d.%m.%Y')} do {max_date.strftime('%d.%m.%Y')} "
-                f"({len(weather_records)} dni)."
+                f"({len(weather_records)} {self._get_days_word(len(weather_records))})."
             )
             
             if date_mismatch:
@@ -229,6 +273,23 @@ class WeatherPage(QWidget):
                 "Błąd pobierania danych", 
                 f"Nie udało się pobrać prognozy pogody: {str(e)}"
             )
+    
+    def _get_days_word(self, number: int) -> str:
+        """
+        Zwraca odpowiednią formę słowa 'dzień' w zależności od liczby.
+        
+        Args:
+            number: Liczba dni.
+            
+        Returns:
+            Odpowiednia forma słowa 'dzień'.
+        """
+        if number == 1:
+            return "dzień"
+        elif 2 <= number <= 4:
+            return "dni"
+        else:
+            return "dni"
     
     def update_data(self):
         """Aktualizuje dane w tabeli i na wykresie."""
