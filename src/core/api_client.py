@@ -95,7 +95,7 @@ class ApiClient:
             try:
                 return self._parse_weather_data(service, cached_data)
             except Exception as e:
-                logger.warning(f"Nie udało się przetworzyć danych z cache: {str(e)}")
+                logger.warn(f"Nie udało się przetworzyć danych z cache: {str(e)}")
         
         # Wykonanie żądania do odpowiedniego API
         if service == "openweathermap":
@@ -343,7 +343,7 @@ class ApiClient:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             logger.debug(f"Zapisano dane do pamięci podręcznej: {cache_path}")
         except Exception as e:
-            logger.warning(f"Nie udało się zapisać danych do pamięci podręcznej: {str(e)}")
+            logger.warn(f"Nie udało się zapisać danych do pamięci podręcznej: {str(e)}")
     
     def load_api_response_from_cache(self, service: str, query: str) -> Optional[Dict]:
         """
@@ -370,7 +370,7 @@ class ApiClient:
             logger.debug(f"Wczytano dane z pamięci podręcznej: {cache_path}")
             return data
         except Exception as e:
-            logger.warning(f"Nie udało się wczytać danych z pamięci podręcznej: {str(e)}")
+            logger.warn(f"Nie udało się wczytać danych z pamięci podręcznej: {str(e)}")
             return None
     
     def test_weather_api(self, service: str) -> bool:
