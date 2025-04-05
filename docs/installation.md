@@ -54,34 +54,6 @@ Zainstaluj pakiet w trybie edycyjnym, co ułatwi pracę nad kodem:
 pip install -e .
 ```
 
-## Krok 5: Weryfikacja wersji Node.js i pnpm
-
-Upewnij się, że używasz odpowiednich wersji Node.js i pnpm:
-
-```bash
-node -v  # Powinno być 20.0.0 lub nowsze
-pnpm -v  # Powinno być 9.12.3 lub nowsze
-```
-
-Jeśli potrzebujesz zaktualizować Node.js, możesz skorzystać z NVM:
-
-```bash
-# Instalacja NVM
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-# lub na Windows (za pomocą powershell)
-# winget install -e --id CoreyButler.NVMforWindows
-
-# Instalacja wymaganej wersji Node.js
-nvm install 20
-nvm use 20
-```
-
-Aby zainstalować lub zaktualizować pnpm:
-
-```bash
-npm install -g pnpm@9.12.3
-```
-
 ## Krok 6: Instalacja zależności JavaScript/TypeScript
 
 Projekt wykorzystuje TypeScript i VitePress do dokumentacji, zainstaluj zależności za pomocą pnpm:
@@ -104,6 +76,11 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
+3. Zależności do budowania pliku EXE:
+```bash
+pip install -e ".[build]"
+```
+
 ## Główne zależności
 
 ### Zależności Python:
@@ -112,6 +89,11 @@ pip install -e ".[dev]"
 ### Zależności deweloperskie Python:
 - pytest >= 7.0.0 - framework do testów jednostkowych
 - pytest-cov >= 4.0.0 - rozszerzenie do analizy pokrycia kodu testami
+
+### Zależności do budowania EXE:
+- pyinstaller >= 6.0.0 - narzędzie do tworzenia plików EXE
+- pillow >= 9.0.0 - biblioteka do przetwarzania obrazów (dla ikon)
+- colorama >= 0.4.6 - obsługa kolorowych logów w konsoli
 
 ### Zależności JavaScript/TypeScript:
 - VitePress 1.6.3 - generator statycznej dokumentacji
@@ -130,4 +112,5 @@ Aby zaktualizować lub dodać nowe zależności, możesz zmodyfikować pliki:
 Po pomyślnej instalacji możesz przejść do:
 - [Uruchamiania aplikacji](/running)
 - [Zapoznania się ze strukturą projektu](/structure)
+- [Budowania aplikacji jako plik EXE](/building-exe) (tylko Windows)
 - [Uruchamiania testów](/testing) 

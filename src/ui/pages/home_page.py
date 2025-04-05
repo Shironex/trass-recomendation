@@ -2,7 +2,7 @@
 Strona główna aplikacji Rekomendator Tras Turystycznych.
 """
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGridLayout
 from PyQt6.QtCore import Qt
 
 import sys

@@ -34,6 +34,7 @@ export default defineConfig({
           { text: 'Instalacja', link: '/installation' },
           { text: 'Struktura projektu', link: '/structure' },
           { text: 'Uruchamianie aplikacji', link: '/running' },
+          { text: 'Budowanie EXE (Windows)', link: '/building-exe' },
           { text: 'Testy', link: '/testing' },
           { text: 'Rozwiązywanie problemów', link: '/troubleshooting' },
         ]

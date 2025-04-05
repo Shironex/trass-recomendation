@@ -106,6 +106,10 @@ source venv/bin/activate
 python src/main.py
 ```
 
+## Budowanie aplikacji jako plik EXE (Windows)
+
+Możesz zbudować aplikację jako niezależny plik wykonywalny EXE dla systemów Windows. Szczegółowe instrukcje znajdziesz w [dokumentacji budowania EXE](docs/building-exe.md) lub na [stronie dokumentacji online](https://shironex.github.io/trass-recomendation/building-exe.html).
+
 ## Uruchamianie dokumentacji
 
 Aby uruchomić lokalnie dokumentację VitePress:

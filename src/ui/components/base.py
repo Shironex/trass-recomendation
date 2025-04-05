@@ -7,8 +7,6 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QDateEdit, QHeaderView, QFrame, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QFont
-
 
 class BaseButton(QPushButton):
     """Podstawowy przycisk z podstawową stylizacją."""

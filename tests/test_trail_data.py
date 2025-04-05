@@ -1,9 +1,7 @@
-import unittest
 import os
 import json
 import csv
 import tempfile
-import time
 import pytest
 from src.core.trail_data import TrailData, TrailRecord
 

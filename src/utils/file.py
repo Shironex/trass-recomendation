@@ -2,7 +2,6 @@
 Moduł zawierający funkcje pomocnicze do obsługi operacji na plikach.
 """
 
-import os
 from pathlib import Path
 from typing import Callable, Any
 from src.utils.logger import logger

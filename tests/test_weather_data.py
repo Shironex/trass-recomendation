@@ -5,9 +5,8 @@ Testy dla modułu weather_data.
 import os
 import json
 import csv
-from datetime import date, datetime
+from datetime import date
 import tempfile
-import time
 import pytest
 from src.core.weather_data import WeatherData, WeatherRecord
 

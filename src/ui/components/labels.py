@@ -3,8 +3,6 @@ Komponenty etykiet UI.
 """
 
 from PyQt6.QtWidgets import QLabel
-from PyQt6.QtGui import QFont
-
 
 class StyledLabel(QLabel):
     """Niestandardowa etykieta z formatowaniem."""

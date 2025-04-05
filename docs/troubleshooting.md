@@ -88,6 +88,36 @@ pip install -e .
 2. Sprawdź strukturę projektu i poprawność importów
 3. Upewnij się, że uruchamiasz aplikację z głównego katalogu projektu
 
+### Problemy z PYTHONPATH przy budowaniu EXE
+
+**Problem:** Podczas budowania pliku EXE pojawiają się błędy związane z importem modułów z pakietu `src`.
+
+**Rozwiązanie:**
+1. Dodaj katalog główny projektu do zmiennej środowiskowej PYTHONPATH:
+```bash
+# Windows (PowerShell)
+$env:PYTHONPATH = $env:PYTHONPATH + ";C:\ścieżka\do\projektu"
+
+# Windows (CMD)
+set PYTHONPATH=%PYTHONPATH%;C:\ścieżka\do\projektu
+
+# Linux/MacOS
+export PYTHONPATH=$PYTHONPATH:/ścieżka/do/projektu
+```
+2. Upewnij się, że pakiet jest poprawnie skonfigurowany w pliku `setup.py`:
+```python
+setup(
+    # ...
+    packages=find_packages(include=["src", "src.*"]),
+    include_package_data=True,
+    # ...
+)
+```
+3. Po wprowadzeniu zmian w `setup.py`, przeinstaluj pakiet w trybie edycyjnym:
+```bash
+pip install -e . --no-warn-script-location
+```
+
 ## Problemy z wydajnością
 
 ### Aplikacja działa wolno
