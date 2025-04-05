@@ -205,31 +205,10 @@ class RouteRecommender:
                 logger.debug("[recommend_routes] Brak tras po filtrowaniu")
                 return []
             
-            # Obliczanie ocen dla każdej trasy
-            scored_trails = []
-            logger.debug(f"[recommend_routes] Rozpoczęcie oceniania {len(filtered_trails)} tras")
-            
-            for i, trail in enumerate(filtered_trails):
-                try:
-                    logger.debug(f"[recommend_routes] Ocenianie trasy #{i+1}: {trail.name} (region: {trail.region})")
-                    # Obliczanie oceny pogody dla regionu trasy
-                    weather_score = self._calculate_weather_score(
-                        trail.region,
-                        (start_date, end_date),
-                        **weather_preferences
-                    )
-                    
-                    scored_trails.append({
-                        'trail': trail,
-                        'weather_score': weather_score,
-                        'total_score': weather_score  # Można rozbudować o inne czynniki
-                    })
-                    logger.debug(f"[recommend_routes] Trasa {trail.name} oceniona na {weather_score:.2f}")
-                except Exception as e:
-                    # Jeśli obliczenie oceny dla jednej trasy się nie powiedzie, 
-                    # kontynuujemy dla pozostałych
-                    logger.error(f"[recommend_routes] Problem z oceną trasy {trail.name}: {str(e)}")
-                    continue
+            # Używamy map() do obliczenia ocen dla każdej trasy
+            date_range = (start_date, end_date)
+            scored_trails = list(self.calculate_trail_scores(filtered_trails, date_range, weather_preferences))
+            logger.debug(f"[recommend_routes] Oceniono {len(scored_trails)} tras")
             
             if not scored_trails:
                 logger.debug("[recommend_routes] Brak tras po ocenie")
@@ -274,6 +253,45 @@ class RouteRecommender:
             logger.error(f"[recommend_routes] Generowanie rekomendacji nie powiodło się: {str(e)}")
             logger.debug(f"[recommend_routes] Szczegóły błędu: {traceback.format_exc()}")
             return []
+    
+    def calculate_trail_scores(self, 
+                              trails: List[Any], 
+                              date_range: Tuple[date, date], 
+                              weather_preferences: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Oblicza oceny dla listy tras używając funkcji map().
+        
+        Args:
+            trails: Lista tras do oceny.
+            date_range: Krotka (start_date, end_date).
+            weather_preferences: Słownik z preferencjami pogodowymi.
+            
+        Returns:
+            Lista tras z ocenami.
+        """
+        logger.debug(f"[calculate_trail_scores] Rozpoczęcie oceniania {len(trails)} tras")
+        
+        def score_trail(trail):
+            try:
+                # Obliczanie oceny pogody dla regionu trasy
+                weather_score = self._calculate_weather_score(
+                    trail.region,
+                    date_range,
+                    **weather_preferences
+                )
+                
+                return {
+                    'trail': trail,
+                    'weather_score': weather_score,
+                    'total_score': weather_score  # Można rozbudować o inne czynniki
+                }
+            except Exception as e:
+                logger.error(f"[score_trail] Problem z oceną trasy {trail.name}: {str(e)}")
+                return None
+        
+        # Używamy map do przetwarzania każdej trasy, a następnie filtrujemy None
+        scored_trails = list(map(score_trail, trails))
+        return [trail for trail in scored_trails if trail is not None]
     
     def generate_weekly_recommendation(self, 
                                      weather_preferences: Dict[str, Any],
