@@ -11,6 +11,7 @@ from PyQt6.QtCore import QSize
 from ui.main import MainWindow
 from src.utils import logger, LogLevel
 from src.config import Config
+import platform
 # Ścieżka do katalogu zasobów
 RESOURCES_DIR = Path("src/tools/resources") 
 
@@ -58,12 +59,13 @@ if __name__ == "__main__":
     # Ustawienie ikony aplikacji
     try:
         # Specjalne ustawienie dla Windows
-        import ctypes
-        myappid = config.APP_NAME  # dowolny unikalny string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        logger.debug("Ustawiono AppUserModelID dla Windows")
+        if platform.system() == "Windows":
+            import ctypes
+            myappid = config.APP_NAME  # dowolny unikalny string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            logger.debug("Ustawiono AppUserModelID dla Windows")
     except Exception as e:
-        logger.warning(f"Nie udało się ustawić AppUserModelID: {e}")
+        logger.error(f"Nie udało się ustawić AppUserModelID: {e}")
 
     # Ustawienie ikony aplikacji
     icon_path = RESOURCES_DIR

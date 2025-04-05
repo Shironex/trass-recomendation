@@ -65,7 +65,7 @@ class WeatherPage(QWidget):
             "date_range",
             "Zakres dat",
             default_start_days=0,  # Dzisiaj
-            default_end_days=15    # Domyślnie 15 dni dla Visual Crossing
+            default_end_days=14    # Domyślnie 15 dni dla Visual Crossing
         )
         
         # Podłączenie sygnałów zmiany dat

@@ -8,11 +8,9 @@ import requests
 import os
 from typing import Dict, List, Optional
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlencode
 from src.utils import logger
-from src.core.trail_data import TrailRecord
 from src.core.weather_data import WeatherRecord
 
 

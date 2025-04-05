@@ -6,10 +6,16 @@
 
 # Zmienne srodowiskowe - używamy pełnych ścieżek z ukośnikami w kierunku naprzód
 VENV = venv
+ifeq ($(OS),Windows_NT)
 PYTHON = $(VENV)/Scripts/python
 PIP = $(VENV)/Scripts/pip
-PNPM = pnpm
 PYTEST = $(VENV)/Scripts/pytest
+else
+PYTHON = $(VENV)/bin/python
+PIP = $(VENV)/bin/pip
+PYTEST = $(VENV)/bin/pytest
+endif
+PNPM = pnpm
 
 help:
 	@echo Trass Recommendation - dostepne komendy:
