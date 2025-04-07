@@ -24,7 +24,7 @@
   "devDependencies": {
     "vitepress": "^1.6.3",
     "vue": "^3.4.15",
-    "typescript": "^5.3.3",
+    "typescript": "^5.8.3",
     "@types/node": "^22.14.0"
   }
 } 
