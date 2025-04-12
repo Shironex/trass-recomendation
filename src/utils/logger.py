@@ -11,9 +11,10 @@ import colorama
 class LogLevel(Enum):
     """Poziomy logowania."""
     DEBUG = 0
-    INFO = 1
-    WARN = 2
-    ERROR = 3
+    HOT_RELOAD = 1
+    INFO = 2
+    WARN = 3
+    ERROR = 4
 
 
 class ColorLogger:
@@ -72,12 +73,22 @@ class ColorLogger:
 
     def debug(self, message):
         """
-        Logowanie na poziomie DEBUG (niebieski).
+        Logowanie na poziomie DEBUG (jasny fioletowy).
         
         Args:
             message (str): Treść wiadomości
         """
-        self._log(LogLevel.DEBUG, self.COLORS["BLUE"], "[DEBUG]", message)
+        self._log(LogLevel.DEBUG, self.COLORS["MAGENTA"], "[DEBUG]", message)
+
+    def hot_reload(self, message):
+        """
+        Logowanie na poziomie HOT_RELOAD (jasny cyjan).
+        Używane do logowania zdarzeń związanych z hot reloadingiem.
+        
+        Args:
+            message (str): Treść wiadomości
+        """
+        self._log(LogLevel.HOT_RELOAD, self.COLORS["CYAN"], "[HOT-RELOAD]", message)
 
     def info(self, message):
         """

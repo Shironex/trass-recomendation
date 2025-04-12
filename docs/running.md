@@ -4,25 +4,7 @@ Ta strona zawiera instrukcje dotyczące uruchamiania aplikacji Trass Recommendat
 
 ## Przygotowanie środowiska
 
-Przed uruchomieniem aplikacji upewnij się, że:
-
-1. Zainstalowałeś wszystkie wymagane zależności (patrz: [Instalacja](/installation))
-2. Aktywowałeś środowisko wirtualne Python
-3. Masz odpowiednią wersję Node.js (20+) i pnpm (9.12.3+)
-
-## Aktywacja środowiska wirtualnego
-
-### Windows:
-
-```bash
-.\venv\Scripts\activate
-```
-
-### Linux/MacOS:
-
-```bash
-source venv/bin/activate
-```
+Przed uruchomieniem aplikacji upewnij się, że ukończyłeś [Instalacje](/installation)
 
 ## Uruchomienie aplikacji
 
@@ -32,27 +14,19 @@ Po aktywacji środowiska wirtualnego, możesz uruchomić aplikację za pomocą p
 python src/main.py
 ```
 
-## Uruchamianie w trybie deweloperskim
+## Uruchamianie aplikacji jako plik EXE (Windows)
 
-Jeśli chcesz uruchomić aplikację w trybie deweloperskim z dodatkowymi narzędziami do debugowania, użyj:
-
-```bash
-python src/main.py --debug
-```
-
-## Uruchamianie z określonymi parametrami
-
-Aplikacja obsługuje różne parametry wejściowe:
+Jeśli wcześniej zbudowałeś aplikację jako plik EXE (zobacz [Budowanie EXE](/building-exe)), możesz ją uruchomić bezpośrednio bez konieczności aktywacji środowiska wirtualnego:
 
 ```bash
-python src/main.py --config config.json --data-dir ./data
+# Jeśli zbudowałeś jako pojedynczy plik
+dist/TrassRecommendation.exe
+
+# Lub jeśli zbudowałeś jako katalog
+dist/TrassRecommendation/TrassRecommendation.exe
 ```
 
-Dostępne opcje:
-- `--config` - ścieżka do pliku konfiguracyjnego
-- `--data-dir` - ścieżka do katalogu z danymi
-- `--debug` - włączenie trybu debugowania
-- `--help` - wyświetlenie dostępnych opcji
+Dzięki temu użytkownicy, którzy nie znają Pythona, mogą łatwo uruchomić aplikację.
 
 ## Uruchamianie dokumentacji VitePress
 
@@ -81,62 +55,6 @@ Aby zobaczyć podgląd zbudowanej dokumentacji przed wdrożeniem:
 ```bash
 pnpm docs:preview
 ```
-
-## Typowe problemy
-
-### Problem z importami
-
-Jeśli napotkasz błąd `ModuleNotFoundError: No module named 'src'`, upewnij się, że:
-
-1. Pakiet został zainstalowany w trybie edycyjnym:
-```bash
-pip install -e .
-```
-
-2. Środowisko wirtualne jest aktywne
-
-3. Znajdujesz się w głównym katalogu projektu podczas uruchamiania aplikacji
-
-### Problem z biblioteką PyQt
-
-Jeśli wystąpi błąd związany z PyQt, upewnij się, że masz zainstalowaną właściwą wersję:
-
-```bash
-pip install PyQt6==6.6.1
-```
-
-### Problem z VitePress i TypeScript
-
-Jeśli napotkasz błędy podczas uruchamiania dokumentacji VitePress:
-
-1. Upewnij się, że masz zainstalowane wszystkie zależności:
-```bash
-pnpm install
-```
-
-2. Sprawdź, czy używasz odpowiednich wersji Node.js i pnpm:
-```bash
-node -v  # Powinno być 20.0.0 lub nowsze
-pnpm -v  # Powinno być 9.12.3 lub nowsze
-```
-
-3. Jeśli występują błędy TypeScript, możesz wyczyścić pamięć podręczną:
-```bash
-pnpm cache clean
-rm -rf node_modules
-pnpm install
-```
-
-### Problem z prawami dostępu
-
-W przypadku błędów związanych z prawami dostępu, upewnij się, że:
-
-1. Na systemach Unix-like, pliki wykonywalne mają odpowiednie uprawnienia:
-```bash
-chmod +x src/main.py
-```
-
-2. Posiadasz odpowiednie uprawnienia do katalogów z danymi
 
 ## Następne kroki
 

@@ -1,506 +1,521 @@
 """
-Strona zarządzania danymi pogodowymi aplikacji Rekomendator Tras Turystycznych.
+Strona danych pogodowych aplikacji.
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox,
-    QTableWidgetItem, QGridLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidgetItem
 )
-from PyQt6.QtCore import Qt
-
-import sys
-sys.path.append('.')
-from src.ui.components import (
-    StyledLabel, BaseButton, PrimaryButton, StyledComboBox,
-    StyledDateEdit, CardFrame, StyledDoubleSpinBox, DataTable
-)
-from src.core.weather_data import WeatherData
+from PyQt6.QtCore import Qt, QDate
 from src.utils import logger
+from src.ui.components import (
+    StyledLabel, DataForm, FilterGroup, DataTable,
+    WeatherChart
+)
+from src.ui.components.chart_dialog import ChartDialog
 
 
 class WeatherPage(QWidget):
-    """Strona zarządzania danymi pogodowymi."""
+    """Strona do zarządzania danymi pogodowymi."""
     
     def __init__(self, parent=None):
-        """Inicjalizacja strony zarządzania danymi pogodowymi."""
+        """
+        Inicjalizacja strony danych pogodowych.
+        
+        Args:
+            parent: Rodzic widgetu.
+        """
         super().__init__(parent)
-        self.main_window = parent
-        self.weather_data = WeatherData()
-        logger.debug("Inicjalizacja strony zarządzania danymi pogodowymi")
-        self._setup_ui()
-        self._connect_signals()
+        self.parent = parent
+        
+        logger.debug("Inicjalizacja strony danych pogodowych")
+        self.setup_ui()
     
-    def _setup_ui(self):
+    def setup_ui(self):
         """Konfiguracja interfejsu użytkownika."""
-        # Główny układ
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(20, 20, 20, 20)
-        self.layout.setSpacing(20)
+        main_layout = QVBoxLayout(self)
         
-        # Inicjalizacja układu głównego
-        self.content_layout = QHBoxLayout()
-        self.left_column = QVBoxLayout()
-        self.right_column = QVBoxLayout()
+        # Tytuł strony
+        title_label = StyledLabel("Zarządzanie danymi pogodowymi", is_title=True)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(title_label)
         
-        # Konfiguracja poszczególnych części UI
-        self._setup_top_bar()
-        self._setup_filters()
-        self._setup_statistics()
-        self._setup_operations()
-        self._setup_data_table()
+        # Grupa pobierania danych z API
+        self.api_form = DataForm("Pobieranie danych z API", self)
+        self.api_form.submitClicked.connect(self.fetch_forecast)
+        main_layout.addWidget(self.api_form)
         
-        # Finalizacja układu
-        self.content_layout.addLayout(self.left_column, 1)
-        self.content_layout.addLayout(self.right_column, 2)
-        self.layout.addLayout(self.content_layout)
-    
-    def _setup_top_bar(self):
-        """Konfiguracja górnego paska z tytułem i przyciskiem powrotu."""
-        # Górny pasek z tytułem i przyciskiem powrotu
-        top_bar = QHBoxLayout()
-        
-        # Przycisk powrotu
-        self.back_btn = BaseButton("Powrót do menu głównego")
-        top_bar.addWidget(self.back_btn)
-        
-        # Tytuł
-        title = StyledLabel("Dane Pogodowe", is_title=True)
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        top_bar.addWidget(title)
-        top_bar.setStretchFactor(self.back_btn, 1)
-        top_bar.setStretchFactor(title, 3)
-        
-        self.layout.addLayout(top_bar)
-    
-    def _setup_filters(self):
-        """Konfiguracja filtrów danych pogodowych."""
-        # Karta filtrów
-        filter_card = CardFrame()
-        filter_layout = QVBoxLayout(filter_card)
-        filter_layout.setContentsMargins(15, 15, 15, 15)
-        filter_layout.setSpacing(10)
-        
-        # Tytuł filtrów
-        filter_title = StyledLabel("Filtry")
-        font = filter_title.font()
-        font.setBold(True)
-        filter_title.setFont(font)
-        filter_layout.addWidget(filter_title)
-        
-        # Kontrolka wyboru lokalizacji
-        loc_layout = QVBoxLayout()
-        
-        self.location = StyledComboBox()
-        self.location.addItem("Wszystkie")
-        loc_layout.addWidget(self.location)
-        filter_layout.addLayout(loc_layout)
-        
-        # Kontrolki wyboru zakresu dat
-        date_layout = QVBoxLayout()
-        date_layout.setSpacing(5)
-        date_label = StyledLabel("Zakres dat:")
-        date_layout.addWidget(date_label)
-        
-        date_range = QHBoxLayout()
-        date_range.setSpacing(10)
-        
-        start_date_layout = QVBoxLayout()
-        start_date_layout.setSpacing(3)
-        start_label = StyledLabel("Od:")
-        start_date_layout.addWidget(start_label)
-        self.start_date = StyledDateEdit()
-        start_date_layout.addWidget(self.start_date)
-        date_range.addLayout(start_date_layout)
-        
-        end_date_layout = QVBoxLayout()
-        end_date_layout.setSpacing(3)
-        end_label = StyledLabel("Do:")
-        end_date_layout.addWidget(end_label)
-        self.end_date = StyledDateEdit()
-        end_date_layout.addWidget(self.end_date)
-        date_range.addLayout(end_date_layout)
-        
-        date_layout.addLayout(date_range)
-        filter_layout.addLayout(date_layout)
-        
-        # Minimalna temperatura
-        temp_layout = QHBoxLayout()
-        temp_layout.setSpacing(5)
-        temp_label = StyledLabel("Min. temperatura:")
-        temp_layout.addWidget(temp_label)
-        
-        self.min_pref_temp = StyledDoubleSpinBox()
-        self.min_pref_temp.setRange(-30, 40)
-        self.min_pref_temp.setValue(15)
-        self.min_pref_temp.setSuffix(" °C")
-        self.min_pref_temp.setMinimumHeight(30)
-        temp_layout.addWidget(self.min_pref_temp)
-        filter_layout.addLayout(temp_layout)
-        
-        # Maksymalne opady
-        precip_layout = QHBoxLayout()
-        precip_layout.setSpacing(5)
-        precip_label = StyledLabel("Maks. opady:")
-        precip_layout.addWidget(precip_label)
-        
-        self.max_precip = StyledDoubleSpinBox()
-        self.max_precip.setRange(0, 100)
-        self.max_precip.setValue(10)
-        self.max_precip.setSuffix(" mm")
-        self.max_precip.setMinimumHeight(30)
-        precip_layout.addWidget(self.max_precip)
-        filter_layout.addLayout(precip_layout)
-        
-        # Minimalne nasłonecznienie
-        sunshine_layout = QHBoxLayout()
-        sunshine_layout.setSpacing(5)
-        sunshine_label = StyledLabel("Min. nasłonecznienie:")
-        sunshine_layout.addWidget(sunshine_label)
-        
-        self.min_sunshine = StyledDoubleSpinBox()
-        self.min_sunshine.setRange(0, 24)
-        self.min_sunshine.setValue(5)
-        self.min_sunshine.setSuffix(" h")
-        self.min_sunshine.setMinimumHeight(30)
-        sunshine_layout.addWidget(self.min_sunshine)
-        filter_layout.addLayout(sunshine_layout)
-        
-        # Przycisk zastosowania filtrów
-        self.filter_btn = PrimaryButton("Zastosuj filtry")
-        self.filter_btn.setMinimumHeight(35)
-        filter_layout.addWidget(self.filter_btn)
-        
-        # Dodanie karty filtrów do lewej kolumny
-        self.left_column.addWidget(filter_card)
-    
-    def _setup_statistics(self):
-        """Konfiguracja karty statystyk."""
-        # Karta statystyk
-        stats_card = CardFrame()
-        stats_layout = QVBoxLayout(stats_card)
-        stats_layout.setContentsMargins(15, 15, 15, 15)
-        stats_layout.setSpacing(10)
-        
-        # Nagłówek statystyk
-        stats_header = StyledLabel("Statystyki pogodowe")
-        font = stats_header.font()
-        font.setBold(True)
-        stats_header.setFont(font)
-        stats_layout.addWidget(stats_header)
-        
-        # Grid ze statystykami
-        stats_grid = QGridLayout()
-        stats_grid.setSpacing(10)
-        stats_grid.setColumnStretch(0, 1)
-        stats_grid.setColumnStretch(1, 1)
-        
-        # Etykiety statystyk
-        stats_grid.addWidget(StyledLabel("Średnia temperatura:"), 0, 0)
-        stats_grid.addWidget(StyledLabel("Suma opadów:"), 1, 0)
-        stats_grid.addWidget(StyledLabel("Liczba dni słonecznych:"), 2, 0)
-        
-        # Wartości statystyk
-        self.avg_temp = StyledLabel("0.0 °C")
-        self.avg_temp.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.total_precip = StyledLabel("0.0 mm")
-        self.total_precip.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.sunny_days = StyledLabel("0")
-        self.sunny_days.setAlignment(Qt.AlignmentFlag.AlignRight)
-        
-        stats_grid.addWidget(self.avg_temp, 0, 1)
-        stats_grid.addWidget(self.total_precip, 1, 1)
-        stats_grid.addWidget(self.sunny_days, 2, 1)
-        
-        stats_layout.addLayout(stats_grid)
-        
-        # Dodanie karty statystyk do lewej kolumny
-        self.left_column.addWidget(stats_card)
-    
-    def _setup_operations(self):
-        """Konfiguracja karty operacji na danych."""
-        # Przyciski operacji na danych
-        operations_card = CardFrame()
-        operations_layout = QVBoxLayout(operations_card)
-        operations_layout.setContentsMargins(15, 15, 15, 15)
-        operations_layout.setSpacing(10)
-        
-        # Nagłówek operacji
-        operations_header = StyledLabel("Operacje na danych")
-        font = operations_header.font()
-        font.setBold(True)
-        operations_header.setFont(font)
-        operations_layout.addWidget(operations_header)
-        
-        # Przycisk wczytywania danych
-        self.load_btn = BaseButton("Wczytaj dane pogodowe")
-        self.load_btn.setMinimumHeight(35)
-        operations_layout.addWidget(self.load_btn)
-        
-        # Przyciski eksportu
-        export_layout = QHBoxLayout()
-        export_layout.setSpacing(10)
-        
-        self.export_csv_btn = BaseButton("Eksportuj do CSV")
-        self.export_json_btn = BaseButton("Eksportuj do JSON")
-        self.export_csv_btn.setMinimumHeight(35)
-        self.export_json_btn.setMinimumHeight(35)
-        
-        export_layout.addWidget(self.export_csv_btn)
-        export_layout.addWidget(self.export_json_btn)
-        operations_layout.addLayout(export_layout)
-        
-        # Dodanie karty operacji do lewej kolumny
-        self.left_column.addWidget(operations_card)
-        self.left_column.addStretch()
-    
-    def _setup_data_table(self):
-        """Konfiguracja tabeli danych pogodowych."""
-        # Tabela danych pogodowych
-        self.weather_table = DataTable()
-        self.weather_table.setColumnCount(7)
-        self.weather_table.setHorizontalHeaderLabels([
-            "Data", "Lokalizacja", "Śr. temp. (°C)", "Min. temp. (°C)", 
-            "Maks. temp. (°C)", "Opady (mm)", "Nasł. (h)"
-        ])
-        
-        self.right_column.addWidget(self.weather_table)
-        
-        # Status label pod tabelą
-        self.status_label = StyledLabel("")
-        self.right_column.addWidget(self.status_label)
-    
-    def _connect_signals(self):
-        """Połączenie sygnałów z slotami."""
-        self.load_btn.clicked.connect(self.load_data)
-        self.filter_btn.clicked.connect(self.apply_filters)
-        self.export_csv_btn.clicked.connect(self.export_to_csv)
-        self.export_json_btn.clicked.connect(self.export_to_json)
-        
-        # Aktualizacja statystyk przy zmianie preferencji
-        self.min_pref_temp.valueChanged.connect(self._update_statistics)
-        self.max_precip.valueChanged.connect(self._update_statistics)
-        self.min_sunshine.valueChanged.connect(self._update_statistics)
-        
-        # Aktualizacja przy zmianie lokalizacji lub daty
-        self.location.currentIndexChanged.connect(self._update_statistics)
-        self.start_date.dateChanged.connect(self._update_statistics)
-        self.end_date.dateChanged.connect(self._update_statistics)
-        
-        if self.main_window:
-            self.back_btn.clicked.connect(self.main_window.show_home_page)
-    
-    def load_data(self):
-        """Wczytuje dane pogodowe z pliku."""
-        filepath, _ = QFileDialog.getOpenFileName(
-            self,
-            "Wczytaj dane pogodowe",
-            "",
-            "Pliki CSV (*.csv);;Pliki JSON (*.json)"
+        # Wybór serwisu API
+        self.api_service_combo = self.api_form.add_combo_field(
+            "api_service", 
+            "Serwis API", 
+            ["visualcrossing"]
         )
-        
-        if not filepath:
-            return
-        
-        try:
-            if filepath.endswith('.csv'):
-                self.weather_data.load_from_csv(filepath)
-            else:
-                self.weather_data.load_from_json(filepath)
-            
-            # Aktualizacja kontrolek filtrów
-            self._update_filters()
-            
-            # Aktualizacja tabeli
-            self._update_table()
-            
-            logger.info(f"Dane pogodowe wczytane pomyślnie z pliku {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wczytane pomyślnie!")
-        except Exception as e:
-            logger.error(f"Błąd wczytywania danych pogodowych: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wczytać danych: {str(e)}")
-    
-    def _update_filters(self):
-        """Aktualizuje kontrolki filtrów na podstawie wczytanych danych."""
-        if not self.weather_data.records:
-            return
-        
-        # Aktualizacja listy lokalizacji
-        self.location.clear()
-        self.location.addItem("Wszystkie")
-        for location in self.weather_data.get_locations():
-            self.location.addItem(location)
-        
-        logger.debug(f"Zaktualizowano filtry pogodowe, dodano {self.location.count() - 1} lokalizacji")
-    
-    def _update_table(self, records=None):
-        """Aktualizuje tabelę danych pogodowych."""
-        if records is None:
-            records = self.weather_data.filtered_records
-        
-        self.weather_table.setRowCount(len(records))
-        
-        for i, record in enumerate(records):
-            # Data
-            self.weather_table.setItem(i, 0, QTableWidgetItem(record.date.strftime('%Y-%m-%d')))
-            # Lokalizacja
-            self.weather_table.setItem(i, 1, QTableWidgetItem(record.location_id))
-            # Średnia temperatura
-            self.weather_table.setItem(i, 2, QTableWidgetItem(f"{record.avg_temp:.1f}"))
-            # Minimalna temperatura
-            self.weather_table.setItem(i, 3, QTableWidgetItem(f"{record.min_temp:.1f}"))
-            # Maksymalna temperatura
-            self.weather_table.setItem(i, 4, QTableWidgetItem(f"{record.max_temp:.1f}"))
-            # Opady
-            self.weather_table.setItem(i, 5, QTableWidgetItem(f"{record.precipitation:.1f}"))
-            # Nasłonecznienie
-            self.weather_table.setItem(i, 6, QTableWidgetItem(f"{record.sunshine_hours:.1f}"))
-    
-    def _filter_by_preferences(self, records):
-        """Filtruje rekordy pogodowe według preferencji użytkownika."""
-        min_temp = self.min_pref_temp.value()
-        max_precip = self.max_precip.value()
-        min_sunshine = self.min_sunshine.value()
-        
-        filtered = []
-        for record in records:
-            if (record.min_temp >= min_temp and
-                record.precipitation <= max_precip and
-                record.sunshine_hours >= min_sunshine):
-                filtered.append(record)
-        
-        return filtered
-
-    def _update_statistics(self):
-        """Aktualizuje statystyki pogodowe i tabelę."""
-        if not self.weather_data.records:
-            logger.debug("Próba aktualizacji statystyk bez wczytanych danych")
-            return
-            
-        location_id = None
-        if self.location.currentText() != "Wszystkie":
-            location_id = self.location.currentText()
-        
-        start_date = self.start_date.date().toPyDate()
-        end_date = self.end_date.date().toPyDate()
-        
-        # Podstawowe filtry
-        filters = {}
-        if location_id:
-            filters['location'] = location_id
-        if start_date and end_date and start_date <= end_date:
-            filters['date_range'] = (start_date, end_date)
-            
-        # Pobierz rekordy z podstawowymi filtrami
-        filtered_records = self.weather_data.filter_records(**filters)
-        
-        # Następnie zastosuj preferencje pogodowe
-        preference_filtered = self._filter_by_preferences(filtered_records)
-        
-        # Zaktualizuj tabelę z wynikami filtrowania
-        self._update_table(preference_filtered)
-        
-        # Aktualizuj status
-        status_msg = f"Wyświetlanie {len(preference_filtered)} z {len(self.weather_data.records)} rekordów"
-        self.status_label.setText(status_msg)
-        
-        # Oblicz statystyki na przefiltrowanych danych
-        if preference_filtered:
-            avg_temp = sum(r.avg_temp for r in preference_filtered) / len(preference_filtered)
-            total_precip = sum(r.precipitation for r in preference_filtered)
-            sunny_days = sum(1 for r in preference_filtered if r.sunshine_hours >= self.min_sunshine.value())
-            
-            self.avg_temp.setText(f"{avg_temp:.1f} °C")
-            self.total_precip.setText(f"{total_precip:.1f} mm")
-            self.sunny_days.setText(f"{sunny_days}")
-            logger.debug(f"Zaktualizowano statystyki: temp={avg_temp:.1f}°C, opady={total_precip:.1f}mm, słoneczne dni={sunny_days}")
-        else:
-            self.avg_temp.setText("0.0 °C")
-            self.total_precip.setText("0.0 mm")
-            self.sunny_days.setText("0")
-            logger.debug("Brak rekordów spełniających kryteria filtrowania")
-    
-    def apply_filters(self):
-        """Stosuje wybrane filtry do danych pogodowych."""
-        if not self.weather_data.records:
-            logger.warn("Próba filtrowania pustych danych pogodowych")
-            QMessageBox.warning(self, "Ostrzeżenie", "Brak danych do filtrowania!")
-            return
-        
-        # Pobranie wartości filtrów
-        filters = {}
         
         # Lokalizacja
-        if self.location.currentText() != "Wszystkie":
-            filters['location'] = self.location.currentText()
+        self.location_combo = self.api_form.add_combo_field(
+            "location", 
+            "Lokalizacja", 
+            ["Warszawa", "Kraków", "Wrocław", "Tatry", "Bieszczady", "Sudety"],
+            editable=True
+        )
         
-        # Zakres dat
-        start_date = self.start_date.date().toPyDate()
-        end_date = self.end_date.date().toPyDate()
+        # Daty
+        self.start_date_edit, self.end_date_edit = self.api_form.add_date_range(
+            "date_range",
+            "Zakres dat",
+            default_start_days=0,  # Dzisiaj
+            default_end_days=14    # Domyślnie 15 dni dla Visual Crossing
+        )
         
-        if start_date and end_date:
-            if start_date > end_date:
-                logger.warn("Niepoprawny zakres dat w filtrach pogodowych")
-                QMessageBox.warning(self, "Ostrzeżenie", "Data początkowa nie może być późniejsza niż data końcowa!")
-                return
+        # Podłączenie sygnałów zmiany dat
+        self.start_date_edit.dateChanged.connect(self.validate_date_range)
+        self.end_date_edit.dateChanged.connect(self.validate_date_range)
+        
+        # Przycisk pobierania
+        self.api_form.add_submit_button("Pobierz prognozę")
+        
+        # Dodajemy grupę filtrów
+        self.filter_group = FilterGroup("Filtrowanie danych", self)
+        self.filter_group.filterApplied.connect(self.apply_filters)
+        self.filter_group.filterReset.connect(self.reset_filters)
+        main_layout.addWidget(self.filter_group)
+        
+        # Filtrowanie po lokalizacji
+        self.filter_location_combo = self.filter_group.add_combo_filter(
+            "location", 
+            "Lokalizacja"
+        )
+        
+        # Filtrowanie po datach
+        self.filter_start_date, self.filter_end_date = self.filter_group.add_date_range_filter(
+            "date_range",
+            "Zakres dat"
+        )
+        
+        # Filtrowanie po temperaturze
+        self.filter_min_temp, self.filter_max_temp = self.filter_group.add_slider_filter(
+            "temp",
+            "Temperatura (°C)",
+            -30, 50, -10, 30
+        )
+        
+        # Filtrowanie po opadach
+        self.filter_min_precip, self.filter_max_precip = self.filter_group.add_slider_filter(
+            "precip",
+            "Opady (mm)",
+            0, 100, 0, 50
+        )
+        
+        # Filtrowanie po nasłonecznieniu
+        self.filter_min_sunshine, self.filter_max_sunshine = self.filter_group.add_slider_filter(
+            "sunshine",
+            "Nasłonecznienie (h)",
+            0, 24, 0, 12
+        )
+        
+        # Filtrowanie po zachmurzeniu
+        self.filter_min_cloud, self.filter_max_cloud = self.filter_group.add_slider_filter(
+            "cloud",
+            "Zachmurzenie (%)",
+            0, 100, 0, 100
+        )
+        
+        # Dodanie przycisków filtrowania
+        self.filter_group.add_buttons_row()
+        
+        # Tabela danych
+        table_label = QLabel("Dane pogodowe:")
+        main_layout.addWidget(table_label)
+        
+        self.weather_table = DataTable()
+        self.weather_table.setColumnCount(8)
+        self.weather_table.setHorizontalHeaderLabels([
+            "Data", "Lokalizacja", "Śr. temp (°C)", "Min temp (°C)", 
+            "Max temp (°C)", "Opady (mm)", "Godz. słoneczne", "Zachmurzenie (%)"
+        ])
+        main_layout.addWidget(self.weather_table)
+        
+        # Przyciski
+        buttons_layout = QHBoxLayout()
+        main_layout.addLayout(buttons_layout)
+        
+        # Przycisk wykresu
+        chart_button = QPushButton("Pokaż wykres")
+        chart_button.clicked.connect(self.show_chart_dialog)
+        buttons_layout.addWidget(chart_button)
+        
+        buttons_layout.addStretch()
+        
+        # Przycisk powrotu
+        close_button = QPushButton("Powrót")
+        close_button.clicked.connect(self.parent.show_home_page)
+        buttons_layout.addWidget(close_button)
+        
+        # Ukryty wykres do przechowywania danych
+        self.weather_chart = WeatherChart()
+        self.weather_chart.hide()
+    
+    def validate_date_range(self):
+        """Sprawdza i koryguje zakres dat."""
+        start_date = self.start_date_edit.date()
+        end_date = self.end_date_edit.date()
+        today = QDate.currentDate()
+        
+        # Sprawdzenie czy daty nie są z przeszłości
+        if start_date < today:
+            self.start_date_edit.setDate(today)
+            start_date = today
+        
+        if end_date < today:
+            self.end_date_edit.setDate(today)
+            end_date = today
+        
+        # Maksymalna liczba dni dla Visual Crossing API
+        max_days = 15
+        max_allowed_date = today.addDays(max_days - 1)
+        
+        # Sprawdzenie czy końcowa data nie przekracza maksymalnej
+        if end_date > max_allowed_date:
+            self.end_date_edit.setDate(max_allowed_date)
+            end_date = max_allowed_date
+        
+        # Sprawdzenie czy data początkowa nie jest późniejsza niż końcowa
+        if start_date > end_date:
+            self.start_date_edit.setDate(end_date)
+    
+    def fetch_forecast(self, data=None):
+        """
+        Pobiera prognozę pogody z wybranego API.
+        
+        Args:
+            data: Dane z formularza (opcjonalne).
+        """
+        # Jeśli dane są przekazane z sygnału formularza
+        if data:
+            service = data.get('api_service')
+            location = data.get('location')
+            start_date = data.get('date_range_start')
+            end_date = data.get('date_range_end')
+        else:
+            # Użyj danych z kontrolek (starszy sposób)
+            service = self.api_service_combo.currentText()
+            location = self.location_combo.currentText()
+            start_date = self.start_date_edit.date().toPyDate()
+            end_date = self.end_date_edit.date().toPyDate()
+        
+        # Sprawdzenie zakresu dat
+        days_diff = (end_date - start_date).days + 1
+        max_days = 15
+        
+        if days_diff > max_days:
+            self.parent.show_error(
+                "Nieprawidłowy zakres dat",
+                f"Serwis {service} pozwala na maksymalnie {max_days} dni prognozy.\n"
+                f"Wybrany zakres to {days_diff} dni."
+            )
+            return
+        
+        if not self.parent.api_client.api_keys.get(service):
+            self.parent.show_error(
+                "Brak klucza API",
+                f"Nie skonfigurowano klucza API dla serwisu {service}. "
+                "Przejdź do menu Narzędzia > Konfiguracja API, aby dodać klucz."
+            )
+            return
+        
+        try:
+            # Dla Visual Crossing używamy zakresu dat
+            weather_records = self.parent.api_client.get_weather_forecast(
+                service, 
+                location, 
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=end_date.strftime("%Y-%m-%d")
+            )
             
-            filters['date_range'] = (start_date, end_date)
-        
-        logger.debug(f"Zastosowano filtry pogodowe: {filters}")
-        
-        # Filtrowanie danych i aktualizacja tabeli
-        filtered_records = self.weather_data.filter_records(**filters)
-        
-        # Zastosuj dodatkowe preferencje użytkownika
-        filtered_records = self._filter_by_preferences(filtered_records)
-        
-        self._update_table(filtered_records)
-        self._update_statistics()
-        
-        status_msg = f"Wyświetlanie {len(filtered_records)} z {len(self.weather_data.records)} rekordów"
-        self.status_label.setText(status_msg)
-        logger.info(status_msg)
-    
-    def export_to_csv(self):
-        """Eksportuje dane pogodowe do pliku CSV."""
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Eksportuj do CSV",
-            "",
-            "Pliki CSV (*.csv)"
-        )
-        
-        if not filepath:
-            return
-        
-        try:
-            self.weather_data.save_to_csv(filepath)
-            logger.info(f"Dane pogodowe wyeksportowane do pliku CSV: {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
+            if not weather_records:
+                self.parent.show_error(
+                    "Brak danych",
+                    f"Nie otrzymano żadnych danych prognozy dla lokalizacji {location}."
+                )
+                return
+                
+            # Aktualizacja danych
+            self.parent.weather_data.records = weather_records
+            self.parent.weather_data.filtered_records = weather_records.copy()
+            
+            # Aktualizacja tabeli
+            self.update_data()
+            
+            # Dodanie lokalizacji do filtra
+            self.update_filter_locations()
+            
+            # Wyświetl informację o różnicy w datach (jeśli występuje)
+            min_date, max_date = self.parent.weather_data.get_date_range()
+            date_mismatch = (min_date != start_date or max_date != end_date)
+            
+            info_message = (
+                f"Pomyślnie pobrano prognozę pogody dla lokalizacji {location} "
+                f"na okres od {min_date.strftime('%d.%m.%Y')} do {max_date.strftime('%d.%m.%Y')} "
+                f"({len(weather_records)} {self._get_days_word(len(weather_records))})."
+            )
+            
+            if date_mismatch:
+                info_message += (
+                    f"\n\nUwaga: Otrzymany zakres dat różni się od żądanego "
+                    f"({start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}). "
+                    f"API pogodowe mogło zwrócić tylko dostępne dane."
+                )
+            
+            self.parent.show_info("Pobrano prognozę", info_message)
         except Exception as e:
-            logger.error(f"Błąd eksportu do CSV: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
+            self.parent.show_error(
+                "Błąd pobierania danych", 
+                f"Nie udało się pobrać prognozy pogody: {str(e)}"
+            )
     
-    def export_to_json(self):
-        """Eksportuje dane pogodowe do pliku JSON."""
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Eksportuj do JSON",
-            "",
-            "Pliki JSON (*.json)"
-        )
+    def _get_days_word(self, number: int) -> str:
+        """
+        Zwraca odpowiednią formę słowa 'dzień' w zależności od liczby.
         
-        if not filepath:
+        Args:
+            number: Liczba dni.
+            
+        Returns:
+            Odpowiednia forma słowa 'dzień'.
+        """
+        if number == 1:
+            return "dzień"
+        elif 2 <= number <= 4:
+            return "dni"
+        else:
+            return "dni"
+    
+    def update_data(self):
+        """Aktualizuje dane w tabeli i na wykresie."""
+        self.update_weather_table()
+        self.weather_chart.set_weather_data(self.parent.weather_data.records)
+        self.sync_api_dates_with_data()
+        self.update_filter_locations()
+    
+    def sync_api_dates_with_data(self):
+        """Synchronizuje daty w panelu pobierania z faktycznie otrzymanymi danymi."""
+        if not self.parent.weather_data.records:
             return
-        
-        try:
-            self.weather_data.save_to_json(filepath)
-            logger.info(f"Dane pogodowe wyeksportowane do pliku JSON: {filepath}")
-            QMessageBox.information(self, "Sukces", "Dane zostały wyeksportowane pomyślnie!")
-        except Exception as e:
-            logger.error(f"Błąd eksportu do JSON: {str(e)}")
-            QMessageBox.critical(self, "Błąd", f"Nie udało się wyeksportować danych: {str(e)}")
+            
+        min_date, max_date = self.parent.weather_data.get_date_range()
+        self.start_date_edit.setDate(QDate.fromString(min_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
+        self.end_date_edit.setDate(QDate.fromString(max_date.strftime('%Y-%m-%d'), 'yyyy-MM-dd'))
     
-    def resizeEvent(self, event):
-        """Obsługa zmiany rozmiaru okna."""
-        super().resizeEvent(event)
-        # Podczas zmiany rozmiaru okna nie zmieniamy szerokości kolumn 
+    def update_filter_locations(self):
+        """Aktualizuje listę lokalizacji w filtrze."""
+        # Zapamiętaj aktualnie wybraną lokalizację
+        current_location = self.filter_location_combo.currentText()
+        
+        # Wyczyszczenie i dodanie domyślnej opcji
+        self.filter_location_combo.clear()
+        self.filter_location_combo.addItem("Wszystkie lokalizacje")
+        
+        # Dodanie dostępnych lokalizacji
+        if self.parent.weather_data.records:
+            locations = self.parent.weather_data.get_locations()
+            self.filter_location_combo.addItems(locations)
+            
+            # Przywróć wcześniejszą lokalizację, jeśli istnieje
+            index = self.filter_location_combo.findText(current_location)
+            if index >= 0:
+                self.filter_location_combo.setCurrentIndex(index)
+    
+    def apply_filters(self):
+        """Stosuje filtry do danych."""
+        # Resetowanie filtrowanych danych
+        self.parent.weather_data.filtered_records = self.parent.weather_data.records.copy()
+        
+        # Filtrowanie po lokalizacji
+        location = self.filter_location_combo.currentText()
+        if location and location != "Wszystkie":
+            self.parent.weather_data.filtered_records = [
+                record for record in self.parent.weather_data.filtered_records
+                if record.location == location
+            ]
+        
+        # Filtrowanie po datach
+        start_date = self.filter_start_date.date().toPyDate()
+        end_date = self.filter_end_date.date().toPyDate()
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if start_date <= record.date <= end_date
+        ]
+        
+        # Filtrowanie po temperaturze
+        min_temp = self.filter_min_temp.value()
+        max_temp = self.filter_max_temp.value()
+        self.filter_by_temperature(min_temp, max_temp)
+        
+        # Filtrowanie po opadach
+        min_precip = self.filter_min_precip.value()
+        max_precip = self.filter_max_precip.value()
+        self.filter_by_precipitation(min_precip, max_precip)
+        
+        # Filtrowanie po nasłonecznieniu
+        min_sunshine = self.filter_min_sunshine.value()
+        max_sunshine = self.filter_max_sunshine.value()
+        self.filter_by_sunshine(min_sunshine, max_sunshine)
+        
+        # Filtrowanie po zachmurzeniu
+        min_cloud = self.filter_min_cloud.value()
+        max_cloud = self.filter_max_cloud.value()
+        self.filter_by_cloud_cover(min_cloud, max_cloud)
+        
+        # Aktualizacja widoku
+        self.update_weather_table(use_filtered=True)
+        self.weather_chart.set_weather_data(self.parent.weather_data.filtered_records)
+    
+    def filter_by_temperature(self, min_temp, max_temp):
+        """
+        Filtruje rekordy pogodowe według zakresu temperatur.
+        
+        Args:
+            min_temp: Minimalna temperatura.
+            max_temp: Maksymalna temperatura.
+        """
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if min_temp <= record.avg_temp <= max_temp
+        ]
+    
+    def filter_by_precipitation(self, min_precip, max_precip):
+        """
+        Filtruje rekordy pogodowe według zakresu opadów.
+        
+        Args:
+            min_precip: Minimalne opady w mm.
+            max_precip: Maksymalne opady w mm.
+        """
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if min_precip <= record.precipitation <= max_precip
+        ]
+    
+    def filter_by_sunshine(self, min_sunshine, max_sunshine):
+        """
+        Filtruje rekordy pogodowe według zakresu godzin słonecznych.
+        
+        Args:
+            min_sunshine: Minimalna liczba godzin słonecznych.
+            max_sunshine: Maksymalna liczba godzin słonecznych.
+        """
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if min_sunshine <= record.sunshine_hours <= max_sunshine
+        ]
+    
+    def filter_by_cloud_cover(self, min_cloud, max_cloud):
+        """
+        Filtruje rekordy pogodowe według zakresu zachmurzenia.
+        
+        Args:
+            min_cloud: Minimalne zachmurzenie w %.
+            max_cloud: Maksymalne zachmurzenie w %.
+        """
+        self.parent.weather_data.filtered_records = [
+            record for record in self.parent.weather_data.filtered_records
+            if min_cloud <= record.cloud_cover <= max_cloud
+        ]
+    
+    def reset_filters(self):
+        """Resetuje wszystkie filtry do wartości domyślnych."""
+        # Reset filtra lokalizacji
+        self.filter_location_combo.setCurrentText("Wszystkie")
+        
+        # Reset filtra dat
+        if self.parent.weather_data.records:
+            min_date, max_date = self.parent.weather_data.get_date_range()
+            self.filter_start_date.setDate(min_date)
+            self.filter_end_date.setDate(max_date)
+        
+        # Reset filtra temperatury
+        self.filter_min_temp.setValue(-10)
+        self.filter_max_temp.setValue(30)
+        
+        # Reset filtra opadów
+        self.filter_min_precip.setValue(0)
+        self.filter_max_precip.setValue(50)
+        
+        # Reset filtra nasłonecznienia
+        self.filter_min_sunshine.setValue(0)
+        self.filter_max_sunshine.setValue(12)
+        
+        # Reset filtra zachmurzenia
+        self.filter_min_cloud.setValue(0)
+        self.filter_max_cloud.setValue(100)
+        
+        # Aktualizacja widoku
+        self.update_weather_table()
+        self.weather_chart.set_weather_data(self.parent.weather_data.records)
+    
+    def update_weather_table(self, use_filtered=False):
+        """
+        Aktualizuje tabelę danych pogodowych.
+        
+        Args:
+            use_filtered: Czy używać filtrowanych rekordów zamiast wszystkich.
+        """
+        records = self.parent.weather_data.filtered_records if use_filtered else self.parent.weather_data.records
+        
+        # Czyszczenie tabeli
+        self.weather_table.setRowCount(0)
+        
+        # Dodawanie rekordów
+        for i, record in enumerate(records):
+            self.weather_table.insertRow(i)
+            
+            # Data
+            date_item = QTableWidgetItem(record.date.strftime("%Y-%m-%d"))
+            date_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 0, date_item)
+            
+            # Lokalizacja
+            location_item = QTableWidgetItem(record.location_id)
+            location_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 1, location_item)
+            
+            # Średnia temperatura
+            avg_temp_item = QTableWidgetItem(f"{record.avg_temp:.1f}")
+            avg_temp_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 2, avg_temp_item)
+            
+            # Minimalna temperatura
+            min_temp_item = QTableWidgetItem(f"{record.min_temp:.1f}")
+            min_temp_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 3, min_temp_item)
+            
+            # Maksymalna temperatura
+            max_temp_item = QTableWidgetItem(f"{record.max_temp:.1f}")
+            max_temp_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 4, max_temp_item)
+            
+            # Opady
+            precip_item = QTableWidgetItem(f"{record.precipitation:.1f}")
+            precip_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 5, precip_item)
+            
+            # Godziny słoneczne
+            sunshine_item = QTableWidgetItem(f"{record.sunshine_hours:.1f}")
+            sunshine_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 6, sunshine_item)
+            
+            # Zachmurzenie
+            cloud_item = QTableWidgetItem(f"{record.cloud_cover}")
+            cloud_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.weather_table.setItem(i, 7, cloud_item)
+    
+    def show_chart_dialog(self):
+        """Wyświetla okno dialogowe z wykresem."""
+        if not self.parent.weather_data.records:
+            self.parent.show_error("Brak danych", "Brak danych do wyświetlenia na wykresie.")
+            return
+            
+        dialog = ChartDialog("weather", self)
+        dialog.set_data(self.parent.weather_data.filtered_records)
+        dialog.exec() 

@@ -5,11 +5,8 @@ Moduł do obsługi danych o trasach turystycznych.
 import csv
 import json
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Any, Set
-from functools import reduce
-from pathlib import Path
-from src.utils.logger import logger
-from src.utils.file import safe_file_operation
+from typing import List
+from src.utils import ( logger, safe_file_operation )
 
 
 @dataclass

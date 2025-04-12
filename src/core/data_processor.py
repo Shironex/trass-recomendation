@@ -4,9 +4,8 @@ Moduł do przetwarzania danych i generowania rekomendacji tras turystycznych.
 
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import date, timedelta
-from functools import reduce
-from src.core.trail_data import TrailData, TrailRecord
-from src.core.weather_data import WeatherData, WeatherRecord
+from src.core.trail_data import TrailData
+from src.core.weather_data import WeatherData
 from src.utils import logger
 
 
@@ -40,7 +39,12 @@ class RouteRecommender:
         Filtruje trasy według podanych parametrów.
         
         Args:
-            **params: Słownik z parametrami filtrowania (min_length, max_length, difficulty, region)
+            **params: Słownik z parametrami filtrowania:
+                - min_length: Minimalna długość trasy w km
+                - max_length: Maksymalna długość trasy w km
+                - min_difficulty: Minimalny poziom trudności (1-5)
+                - max_difficulty: Maksymalny poziom trudności (1-5)
+                - region: Region trasy
             
         Returns:
             list: Lista przefiltrowanych tras
@@ -58,8 +62,14 @@ class RouteRecommender:
             filtered_trails = [t for t in filtered_trails if t.length_km <= params['max_length']]
             logger.debug(f"[filter_trails_by_params] Po filtracji max_length: {len(filtered_trails)} tras")
         
-        # Filtrowanie według trudności
-        if 'difficulty' in params:
+        # Filtrowanie według trudności (zakres)
+        if 'min_difficulty' in params or 'max_difficulty' in params:
+            min_diff = params.get('min_difficulty', 1)
+            max_diff = params.get('max_difficulty', 5)
+            filtered_trails = [t for t in filtered_trails if min_diff <= t.difficulty <= max_diff]
+            logger.debug(f"[filter_trails_by_params] Po filtracji difficulty: {len(filtered_trails)} tras")
+        # Zachowujemy stare filtrowanie po trudności dla kompatybilności wstecznej
+        elif 'difficulty' in params:
             filtered_trails = [t for t in filtered_trails if t.difficulty == params['difficulty']]
             logger.debug(f"[filter_trails_by_params] Po filtracji difficulty: {len(filtered_trails)} tras")
         
@@ -78,6 +88,7 @@ class RouteRecommender:
                                max_temp: float = 25.0,
                                max_precipitation: float = 5.0,
                                min_sunshine_hours: float = 4.0,
+                               max_sunshine_hours: float = 12.0,
                                temperature_weight: float = None,
                                precipitation_weight: float = None,
                                sunshine_weight: float = None) -> float:
@@ -91,6 +102,7 @@ class RouteRecommender:
             max_temp: Maksymalna preferowana temperatura.
             max_precipitation: Maksymalna akceptowalna suma opadów.
             min_sunshine_hours: Minimalna preferowana liczba godzin słonecznych.
+            max_sunshine_hours: Maksymalna preferowana liczba godzin słonecznych.
             temperature_weight: Waga temperatury w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['temperature']).
             precipitation_weight: Waga opadów w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['precipitation']).
             sunshine_weight: Waga nasłonecznienia w ocenie (domyślnie WEATHER_SCORE_WEIGHTS['sunshine']).
@@ -133,10 +145,15 @@ class RouteRecommender:
             logger.debug(f"[_calculate_weather_score] Ocena opadów: {precip_score:.2f}")
             
             # Ocena nasłonecznienia
-            sunny_days = stats['sunny_days_count']
-            total_days = (end_date - start_date).days + 1
-            sunny_ratio = sunny_days / total_days if total_days > 0 else 0
-            sunshine_score = sunshine_weight * sunny_ratio
+            avg_sunshine = stats.get('avg_sunshine_hours', 0)
+            sunshine_score = 0
+            if min_sunshine_hours <= avg_sunshine <= max_sunshine_hours:
+                sunshine_score = sunshine_weight
+            else:
+                # Im dalej od preferowanego zakresu, tym mniejsza ocena
+                distance = min(abs(avg_sunshine - min_sunshine_hours), 
+                             abs(avg_sunshine - max_sunshine_hours))
+                sunshine_score = max(0, sunshine_weight - (distance * 4))
             logger.debug(f"[_calculate_weather_score] Ocena nasłonecznienia: {sunshine_score:.2f}")
             
             # Łączna ocena
@@ -188,31 +205,10 @@ class RouteRecommender:
                 logger.debug("[recommend_routes] Brak tras po filtrowaniu")
                 return []
             
-            # Obliczanie ocen dla każdej trasy
-            scored_trails = []
-            logger.debug(f"[recommend_routes] Rozpoczęcie oceniania {len(filtered_trails)} tras")
-            
-            for i, trail in enumerate(filtered_trails):
-                try:
-                    logger.debug(f"[recommend_routes] Ocenianie trasy #{i+1}: {trail.name} (region: {trail.region})")
-                    # Obliczanie oceny pogody dla regionu trasy
-                    weather_score = self._calculate_weather_score(
-                        trail.region,
-                        (start_date, end_date),
-                        **weather_preferences
-                    )
-                    
-                    scored_trails.append({
-                        'trail': trail,
-                        'weather_score': weather_score,
-                        'total_score': weather_score  # Można rozbudować o inne czynniki
-                    })
-                    logger.debug(f"[recommend_routes] Trasa {trail.name} oceniona na {weather_score:.2f}")
-                except Exception as e:
-                    # Jeśli obliczenie oceny dla jednej trasy się nie powiedzie, 
-                    # kontynuujemy dla pozostałych
-                    logger.error(f"[recommend_routes] Problem z oceną trasy {trail.name}: {str(e)}")
-                    continue
+            # Używamy map() do obliczenia ocen dla każdej trasy
+            date_range = (start_date, end_date)
+            scored_trails = list(self.calculate_trail_scores(filtered_trails, date_range, weather_preferences))
+            logger.debug(f"[recommend_routes] Oceniono {len(scored_trails)} tras")
             
             if not scored_trails:
                 logger.debug("[recommend_routes] Brak tras po ocenie")
@@ -257,6 +253,45 @@ class RouteRecommender:
             logger.error(f"[recommend_routes] Generowanie rekomendacji nie powiodło się: {str(e)}")
             logger.debug(f"[recommend_routes] Szczegóły błędu: {traceback.format_exc()}")
             return []
+    
+    def calculate_trail_scores(self, 
+                              trails: List[Any], 
+                              date_range: Tuple[date, date], 
+                              weather_preferences: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Oblicza oceny dla listy tras używając funkcji map().
+        
+        Args:
+            trails: Lista tras do oceny.
+            date_range: Krotka (start_date, end_date).
+            weather_preferences: Słownik z preferencjami pogodowymi.
+            
+        Returns:
+            Lista tras z ocenami.
+        """
+        logger.debug(f"[calculate_trail_scores] Rozpoczęcie oceniania {len(trails)} tras")
+        
+        def score_trail(trail):
+            try:
+                # Obliczanie oceny pogody dla regionu trasy
+                weather_score = self._calculate_weather_score(
+                    trail.region,
+                    date_range,
+                    **weather_preferences
+                )
+                
+                return {
+                    'trail': trail,
+                    'weather_score': weather_score,
+                    'total_score': weather_score  # Można rozbudować o inne czynniki
+                }
+            except Exception as e:
+                logger.error(f"[score_trail] Problem z oceną trasy {trail.name}: {str(e)}")
+                return None
+        
+        # Używamy map do przetwarzania każdej trasy, a następnie filtrujemy None
+        scored_trails = list(map(score_trail, trails))
+        return [trail for trail in scored_trails if trail is not None]
     
     def generate_weekly_recommendation(self, 
                                      weather_preferences: Dict[str, Any],

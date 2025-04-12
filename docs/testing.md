@@ -4,10 +4,16 @@ Ta strona zawiera informacje na temat testowania aplikacji Trass Recommendation.
 
 ## Przegląd testów
 
-Projekt wykorzystuje framework pytest do testowania różnych aspektów aplikacji. Testy są zorganizowane w następujące kategorie:
-- Testy jednostkowe - sprawdzają działanie pojedynczych funkcji i metod
-- Testy integracyjne - weryfikują interakcje między komponentami
-- Testy UI - testują interfejs użytkownika
+Projekt wykorzystuje framework pytest do testowania różnych aspektów aplikacji. W naszym projekcie mamy następujące kategorie testów:
+
+- **Testy danych tras** - weryfikują operacje na danych dotyczących szlaków turystycznych
+- **Testy danych pogodowych** - sprawdzają poprawność przetwarzania i filtrowania danych pogodowych
+- **Testy filtrowania danych pogodowych** - specjalizowane testy dla algorytmów filtrowania w oparciu o preferencje
+
+Testy zostały zorganizowane w następujących plikach:
+- `tests/test_trail_data.py` - testy dla modułu obsługującego dane tras
+- `tests/test_weather_data.py` - testy dla modułu obsługującego dane pogodowe
+- `tests/test_weather_filter.py` - testy filtrowania danych pogodowych według preferencji
 
 ## Instalacja zależności testowych
 
@@ -38,28 +44,13 @@ Możesz uruchomić tylko określone testy, podając ścieżkę do modułu, klasy
 
 ```bash
 # Uruchomienie testów z określonego modułu
-pytest tests/test_models/test_route.py
+pytest tests/test_trail_data.py
 
 # Uruchomienie konkretnej klasy testowej
-pytest tests/test_models/test_route.py::TestRouteModel
+pytest tests/test_trail_data.py::TestTrailData
 
 # Uruchomienie określonej funkcji testowej
-pytest tests/test_models/test_route.py::TestRouteModel::test_route_creation
-```
-
-### Uruchamianie testów z określonymi markerami
-
-Możesz także uruchamiać testy oznaczone specjalnymi markerami:
-
-```bash
-# Uruchomienie tylko testów jednostkowych
-pytest -m "unit"
-
-# Uruchomienie tylko testów integracyjnych
-pytest -m "integration"
-
-# Uruchomienie testów UI
-pytest -m "ui"
+pytest tests/test_trail_data.py::TestTrailData::test_filter_by_region
 ```
 
 ## Analiza pokrycia kodu
@@ -76,95 +67,81 @@ pytest --cov=src --cov-report=html
 
 Po uruchomieniu drugiego polecenia, raport HTML zostanie wygenerowany w katalogu `htmlcov`. Możesz otworzyć plik `index.html` w przeglądarce, aby zobaczyć szczegółowy raport.
 
-## Pisanie testów
+## Fixtures
 
-### Struktura testów
+W projekcie wykorzystywane są następujące fixtures:
 
-Testy powinny być umieszczone w katalogu `tests/` w plikach z prefiksem `test_`. Na przykład, testy dla modułu `src/models/route.py` powinny być w pliku `tests/test_models/test_route.py`.
+### Fixtures ogólne (conftest.py)
 
-### Przykład testu jednostkowego
+- `ensure_test_data_dir` - tworzy katalog na dane testowe, jeśli nie istnieje
+- `temp_file` - tworzy tymczasowy plik do testów i usuwa go po zakończeniu
+- `sample_date` - dostarcza przykładową datę do testów
 
-```python
-import pytest
-from src.models.route import Route
+### Fixtures dla danych tras (test_trail_data.py)
 
-def test_route_creation():
-    """Test tworzenia nowej trasy."""
-    route = Route(name="Trasa testowa", distance=10.5, difficulty="easy")
-    assert route.name == "Trasa testowa"
-    assert route.distance == 10.5
-    assert route.difficulty == "easy"
+- `sample_trails` - dostarcza przykładowe obiekty TrailRecord do testów
+- `sample_csv_file` - tworzy tymczasowy plik CSV z danymi tras
+- `sample_json_file` - tworzy tymczasowy plik JSON z danymi tras
+- `trail_data` - dostarcza instancję klasy TrailData
 
-def test_route_invalid_difficulty():
-    """Test walidacji trudności trasy."""
-    with pytest.raises(ValueError):
-        Route(name="Trasa testowa", distance=10.5, difficulty="invalid")
-```
+### Fixtures dla danych pogodowych (test_weather_data.py)
 
-### Przykład testu z użyciem fixture
+- `sample_records` - dostarcza przykładowe obiekty WeatherRecord
+- `weather_data` - dostarcza instancję klasy WeatherData z załadowanymi przykładowymi danymi
+- `temp_csv_file` - tworzy tymczasowy plik CSV z danymi pogodowymi
+- `temp_json_file` - tworzy tymczasowy plik JSON z danymi pogodowymi
 
-```python
-import pytest
-from src.models.route import Route
+## Przykłady testów
 
-@pytest.fixture
-def sample_route():
-    """Fixture zwracająca przykładową trasę."""
-    return Route(name="Trasa testowa", distance=10.5, difficulty="easy")
-
-def test_route_distance_conversion(sample_route):
-    """Test konwersji odległości z km na mile."""
-    assert sample_route.distance_in_miles() == pytest.approx(6.5, 0.1)
-```
-
-## Mockowanie i stubowanie
-
-Do mockowania obiektów w testach używamy biblioteki `unittest.mock`:
+### Test wczytywania danych tras z pliku CSV
 
 ```python
-from unittest.mock import Mock, patch
-from src.controllers.route_controller import RouteController
-
-def test_route_controller_with_mock():
-    """Test kontrolera tras z użyciem mocka."""
-    mock_model = Mock()
-    mock_model.get_routes.return_value = [
-        {"name": "Trasa 1", "distance": 10.5, "difficulty": "easy"},
-        {"name": "Trasa 2", "distance": 15.2, "difficulty": "medium"}
-    ]
+def test_load_from_csv(trail_data, sample_csv_file, sample_trails):
+    """Test wczytywania danych z pliku CSV."""
+    trail_data.load_from_csv(sample_csv_file)
     
-    controller = RouteController(model=mock_model)
-    routes = controller.get_all_routes()
+    # Sprawdzenie liczby wczytanych tras
+    assert len(trail_data.trails) == 3
     
-    assert len(routes) == 2
-    assert routes[0]["name"] == "Trasa 1"
-    mock_model.get_routes.assert_called_once()
+    # Sprawdzenie poprawności wczytanych danych
+    trail = trail_data.trails[0]
+    assert trail.id == "T001"
+    assert trail.name == "Dolina Kościeliska"
+    assert trail.region == "TATRY"
+    assert trail.length_km == 7.8
+    assert trail.elevation_gain == 320.0
+    assert trail.difficulty == 2
+    assert trail.terrain_type == "szlak pieszy"
+    assert trail.tags == ["dolina", "łatwa", "rodzinna"]
 ```
 
-## Automatyzacja testów
+### Test filtrowania danych pogodowych według preferencji
 
-Można skonfigurować ciągłą integrację (CI) do automatycznego uruchamiania testów przy każdym commit'cie. W tym celu używamy GitHub Actions lub innych narzędzi CI/CD.
-
-## Najlepsze praktyki
-
-- Pisz testy przed implementacją (TDD - Test-Driven Development)
-- Testuj zarówno przypadki poprawne, jak i brzegowe
-- Utrzymuj wysoki poziom pokrycia kodu testami
-- Używaj odpowiednich asercji dla różnych typów testów
-- Unikaj zależności między testami
-
-## Rozwiązywanie problemów
-
-### Testy nie znajdują modułów projektu
-
-Upewnij się, że:
-1. Zainstalowałeś pakiet w trybie edycyjnym: `pip install -e .`
-2. Uruchamiasz testy z głównego katalogu projektu
-3. Struktura importów w testach jest prawidłowa
-
-### Niektóre testy nie działają na CI
-
-Sprawdź:
-1. Czy testy nie zależą od specyficznych dla środowiska warunków
-2. Czy używasz mocków dla zewnętrznych zasobów
-3. Czy nie ma problemów z zależnościami na środowisku CI 
+```python
+def test_combined_filters(weather_data):
+    """Test kombinacji wszystkich filtrów preferencji."""
+    # Filtrowanie
+    min_temp = 15.0
+    max_precip = 10.0
+    min_sunshine = 8.0
+    filtered = filter_by_preferences(
+        weather_data.records,
+        min_temp=min_temp,
+        max_precip=max_precip,
+        min_sunshine=min_sunshine
+    )
+    
+    # Sprawdzenie
+    expected_count = 0
+    for record in weather_data.records:
+        if (record.min_temp >= min_temp and 
+            record.precipitation <= max_precip and 
+            record.sunshine_hours >= min_sunshine):
+            expected_count += 1
+            
+    assert len(filtered) == expected_count
+    for record in filtered:
+        assert record.min_temp >= min_temp
+        assert record.precipitation <= max_precip
+        assert record.sunshine_hours >= min_sunshine
+```
