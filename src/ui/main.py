@@ -100,6 +100,8 @@ class MainWindow(QMainWindow):
         self.menu.export_trails_json_signal.connect(self.export_trails_json)
         self.menu.export_weather_csv_signal.connect(self.export_weather_csv)
         self.menu.export_weather_json_signal.connect(self.export_weather_json)
+        self.menu.export_recommendations_csv_signal.connect(self.export_recommendations_csv)
+        self.menu.export_recommendations_json_signal.connect(self.export_recommendations_json)
         
         # Status bar
         self.status_bar = QStatusBar()
@@ -314,6 +316,80 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f"Zapisano {len(self.weather_data.records)} rekordów pogodowych do JSON", 3000)
         except Exception as e:
             self.show_error("Błąd zapisywania", f"Nie udało się zapisać danych pogodowych: {str(e)}")
+    
+    def export_recommendations_csv(self):
+        """Eksportuje rekomendacje tras do pliku CSV."""
+        # Sprawdzenie czy jesteśmy na stronie rekomendacji
+        if self.stacked_widget.currentWidget() != self.recommendation_page:
+            self.show_info("Informacja", "Przejdź do zakładki Rekomendacje, aby wygenerować rekomendacje przed eksportem.")
+            return
+            
+        # Sprawdzenie czy są wygenerowane rekomendacje
+        if not hasattr(self.recommendation_page, 'current_recommendations') or not self.recommendation_page.current_recommendations:
+            self.show_error("Brak danych", "Brak rekomendacji do eksportu. Najpierw wygeneruj rekomendacje.")
+            return
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Eksportuj rekomendacje do CSV", "", "Pliki CSV (*.csv)"
+        )
+        
+        if not file_path:
+            return
+        
+        if not file_path.lower().endswith('.csv'):
+            file_path += '.csv'
+        
+        try:
+            # Używanie metody eksportu z klasy RouteRecommender
+            self.recommendation_page.recommender.export_recommendations_to_csv(
+                self.recommendation_page.current_recommendations,
+                file_path
+            )
+            
+            self.show_info(
+                "Zapisano dane", 
+                f"Pomyślnie zapisano rekomendacje do pliku CSV."
+            )
+            self.status_bar.showMessage(f"Zapisano rekomendacje do CSV", 3000)
+        except Exception as e:
+            self.show_error("Błąd zapisywania", f"Nie udało się zapisać rekomendacji: {str(e)}")
+    
+    def export_recommendations_json(self):
+        """Eksportuje rekomendacje tras do pliku JSON."""
+        # Sprawdzenie czy jesteśmy na stronie rekomendacji
+        if self.stacked_widget.currentWidget() != self.recommendation_page:
+            self.show_info("Informacja", "Przejdź do zakładki Rekomendacje, aby wygenerować rekomendacje przed eksportem.")
+            return
+            
+        # Sprawdzenie czy są wygenerowane rekomendacje
+        if not hasattr(self.recommendation_page, 'current_recommendations') or not self.recommendation_page.current_recommendations:
+            self.show_error("Brak danych", "Brak rekomendacji do eksportu. Najpierw wygeneruj rekomendacje.")
+            return
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Eksportuj rekomendacje do JSON", "", "Pliki JSON (*.json)"
+        )
+        
+        if not file_path:
+            return
+        
+        if not file_path.lower().endswith('.json'):
+            file_path += '.json'
+        
+        try:
+            # Używanie metody eksportu z klasy RouteRecommender
+            self.recommendation_page.recommender.export_recommendations_to_json(
+                self.recommendation_page.current_recommendations,
+                file_path
+            )
+            
+            self.show_info(
+                "Zapisano dane", 
+                f"Pomyślnie zapisano rekomendacje do pliku JSON."
+            )
+            self.status_bar.showMessage(f"Zapisano rekomendacje do JSON", 3000)
+        except Exception as e:
+            self.show_error("Błąd zapisywania", f"Nie udało się zapisać rekomendacji: {str(e)}")
     
     def show_api_settings(self):
         """Wyświetla dialog konfiguracji API."""

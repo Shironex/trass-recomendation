@@ -5,8 +5,17 @@ Moduł do obsługi danych o trasach turystycznych.
 import csv
 import json
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict, Tuple, Optional
+from enum import Enum, auto
 from src.utils import ( logger, safe_file_operation )
+
+
+class TrailCategory(Enum):
+    """Kategorie tras turystycznych."""
+    FAMILY = auto()      # Rodzinna
+    SCENIC = auto()      # Widokowa
+    SPORT = auto()       # Sportowa
+    EXTREME = auto()     # Ekstremalna
 
 
 @dataclass
@@ -24,6 +33,197 @@ class TrailRecord:
     difficulty: int
     terrain_type: str
     tags: List[str]
+    
+    # Parametry dla szacowania czasu przejścia
+    WALKING_SPEEDS = {
+        'flat': 4.0,                  # km/h na płaskim terenie
+        'mountain': 3.0,              # km/h w terenie górskim
+        'lakeside': 4.5,              # km/h wokół jeziora
+        'forest': 3.5,                # km/h w lesie
+        'urban': 5.0,                 # km/h w terenie miejskim
+        'hill': 3.2,                  # km/h na wzgórzach
+        'coast': 4.0,                 # km/h wybrzeżem
+        'meadow': 4.5,                # km/h po łące
+        'rocky': 2.5,                 # km/h po skałach
+        'desert': 3.0,                # km/h po pustyni
+        'wetland': 2.5,               # km/h przez mokradła
+        'canyon': 2.0                 # km/h w kanionie
+    }
+    
+    # Domyślna prędkość dla nieznanego terenu (km/h)
+    DEFAULT_SPEED = 3.5
+    
+    # Mnożniki trudności dla szacowania czasu
+    DIFFICULTY_MULTIPLIER = {
+        1: 1.0,    # Łatwa
+        2: 1.2,    # Średnio łatwa
+        3: 1.4,    # Średnia
+        4: 1.6,    # Trudna
+        5: 1.8     # Bardzo trudna
+    }
+    
+    # Czas dodatkowy na każde 100m przewyższenia (w godzinach)
+    ELEVATION_TIME_PER_100M = 0.1
+    
+    def calculate_center_point(self) -> Tuple[float, float]:
+        """
+        Oblicza środek trasy (średnia współrzędnych początku i końca).
+        
+        Returns:
+            Krotka (latitude, longitude) ze współrzędnymi środka trasy.
+        """
+        center_lat = (self.start_lat + self.end_lat) / 2
+        center_lon = (self.start_lon + self.end_lon) / 2
+        return (center_lat, center_lon)
+    
+    def estimate_completion_time(self) -> float:
+        """
+        Szacuje czas przejścia trasy w godzinach.
+        
+        Uwzględnia:
+        - Długość trasy
+        - Przewyższenie (dodatkowy czas na każde 100m przewyższenia)
+        - Trudność trasy (mnożnik czasu)
+        - Typ terenu (różne prędkości dla różnych terenów)
+        
+        Returns:
+            Szacowany czas przejścia w godzinach.
+        """
+        # Określenie prędkości poruszania się na podstawie terenu
+        speed = self.WALKING_SPEEDS.get(self.terrain_type.lower(), self.DEFAULT_SPEED)
+        
+        # Podstawowy czas przejścia (długość / prędkość)
+        base_time = self.length_km / speed
+        
+        # Dodatkowy czas na przewyższenie
+        elevation_time = (self.elevation_gain / 100) * self.ELEVATION_TIME_PER_100M
+        
+        # Mnożnik trudności
+        difficulty_multiplier = self.DIFFICULTY_MULTIPLIER.get(self.difficulty, 1.0)
+        
+        # Całkowity szacowany czas
+        estimated_time = (base_time + elevation_time) * difficulty_multiplier
+        
+        return estimated_time
+    
+    def estimate_completion_time_formatted(self) -> str:
+        """
+        Zwraca szacowany czas przejścia trasy w formacie "Xh Ymin".
+        
+        Returns:
+            String z czasem w formacie "Xh Ymin".
+        """
+        hours_total = self.estimate_completion_time()
+        hours = int(hours_total)
+        minutes = int((hours_total - hours) * 60)
+        
+        if hours == 0:
+            return f"{minutes}min"
+        else:
+            return f"{hours}h {minutes}min"
+    
+    def check_preference_match(self, min_difficulty: int = 1, max_difficulty: int = 5,
+                            min_length: float = 0, max_length: float = float('inf'),
+                            max_elevation_gain: float = float('inf'),
+                            preferred_regions: List[str] = None,
+                            preferred_tags: List[str] = None) -> bool:
+        """
+        Sprawdza, czy trasa spełnia preferencje użytkownika.
+        
+        Args:
+            min_difficulty: Minimalna akceptowalna trudność.
+            max_difficulty: Maksymalna akceptowalna trudność.
+            min_length: Minimalna akceptowalna długość trasy w km.
+            max_length: Maksymalna akceptowalna długość trasy w km.
+            max_elevation_gain: Maksymalne akceptowalne przewyższenie.
+            preferred_regions: Lista preferowanych regionów.
+            preferred_tags: Lista preferowanych tagów.
+            
+        Returns:
+            True, jeśli trasa spełnia wszystkie preferencje, False w przeciwnym przypadku.
+        """
+        # Sprawdzenie trudności
+        if self.difficulty < min_difficulty or self.difficulty > max_difficulty:
+            return False
+        
+        # Sprawdzenie długości
+        if self.length_km < min_length or self.length_km > max_length:
+            return False
+        
+        # Sprawdzenie przewyższenia
+        if self.elevation_gain > max_elevation_gain:
+            return False
+        
+        # Sprawdzenie regionu
+        if preferred_regions and self.region not in preferred_regions:
+            return False
+        
+        # Sprawdzenie tagów (wystarczy jeden pasujący tag)
+        if preferred_tags and not any(tag in self.tags for tag in preferred_tags):
+            return False
+        
+        return True
+    
+    def categorize_trail(self) -> List[TrailCategory]:
+        """
+        Kategoryzuje trasę na podstawie jej parametrów.
+        
+        Kategorie:
+        - FAMILY (Rodzinna): łatwa, niezbyt długa i z małym przewyższeniem
+        - SCENIC (Widokowa): tagi wskazujące na walory krajobrazowe
+        - SPORT (Sportowa): dłuższa, z większym przewyższeniem
+        - EXTREME (Ekstremalna): bardzo trudna, duże przewyższenie
+        
+        Returns:
+            Lista kategorii, do których należy trasa.
+        """
+        categories = []
+        
+        # Kategoria FAMILY (Rodzinna)
+        if (self.difficulty <= 2 and 
+            self.length_km <= 10 and 
+            self.elevation_gain <= 300):
+            categories.append(TrailCategory.FAMILY)
+        
+        # Kategoria SCENIC (Widokowa)
+        scenic_tags = ['view', 'panorama', 'landscape', 'mountain', 'lake', 'forest', 'waterfall', 'viewpoint', 'widokowa']
+        if any(tag in self.tags for tag in scenic_tags):
+            categories.append(TrailCategory.SCENIC)
+        
+        # Kategoria SPORT (Sportowa)
+        if (self.length_km >= 15 or 
+            self.elevation_gain >= 500 or
+            self.difficulty >= 3):
+            categories.append(TrailCategory.SPORT)
+        
+        # Kategoria EXTREME (Ekstremalna)
+        if (self.difficulty >= 4 and 
+            (self.elevation_gain >= 1000 or self.length_km >= 25)):
+            categories.append(TrailCategory.EXTREME)
+        
+        # Jeśli nie przypisano żadnej kategorii, przypisujemy domyślnie SCENIC
+        if not categories:
+            categories.append(TrailCategory.SCENIC)
+        
+        return categories
+    
+    def get_categories_names(self) -> List[str]:
+        """
+        Zwraca nazwy kategorii w języku polskim.
+        
+        Returns:
+            Lista nazw kategorii.
+        """
+        categories = self.categorize_trail()
+        
+        names_map = {
+            TrailCategory.FAMILY: "Rodzinna",
+            TrailCategory.SCENIC: "Widokowa",
+            TrailCategory.SPORT: "Sportowa",
+            TrailCategory.EXTREME: "Ekstremalna"
+        }
+        
+        return [names_map[category] for category in categories]
 
 
 class TrailData:

@@ -6,6 +6,7 @@ from .api_client import ApiClient
 from .data_processor import RouteRecommender
 from .trail_data import TrailData, TrailRecord
 from .weather_data import WeatherData, WeatherRecord
+from .user_preference import UserPreference
 
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     'TrailData',
     'WeatherData',
     'TrailRecord',
-    'WeatherRecord'
+    'WeatherRecord',
+    'UserPreference'
 ]
 

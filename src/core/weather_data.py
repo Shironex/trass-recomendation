@@ -22,6 +22,112 @@ class WeatherRecord:
     precipitation: float
     sunshine_hours: float
     cloud_cover: int
+    
+    def is_sunny_day(self, min_sunshine_hours: float = 5.0, max_cloud_cover: int = 30) -> bool:
+        """
+        Sprawdza, czy dzień jest słoneczny.
+        
+        Args:
+            min_sunshine_hours: Minimalna liczba godzin słonecznych dla słonecznego dnia.
+            max_cloud_cover: Maksymalne zachmurzenie (%) dla słonecznego dnia.
+            
+        Returns:
+            True, jeśli dzień jest słoneczny, False w przeciwnym przypadku.
+        """
+        return self.sunshine_hours >= min_sunshine_hours and self.cloud_cover <= max_cloud_cover
+    
+    def is_rainy_day(self, min_precipitation: float = 1.0) -> bool:
+        """
+        Sprawdza, czy dzień jest deszczowy.
+        
+        Args:
+            min_precipitation: Minimalna ilość opadów (mm) dla deszczowego dnia.
+            
+        Returns:
+            True, jeśli dzień jest deszczowy, False w przeciwnym przypadku.
+        """
+        return self.precipitation >= min_precipitation
+    
+    def calculate_comfort_index(self, 
+                              optimal_temp_range: Tuple[float, float] = (18, 25),
+                              max_comfort_precipitation: float = 0.0,
+                              optimal_sunshine: float = 8.0,
+                              max_comfort_cloud_cover: int = 20) -> float:
+        """
+        Oblicza indeks komfortu pogodowego w skali 0-100.
+        
+        Indeks uwzględnia:
+        - Temperaturę (optymalna 18-25°C)
+        - Opady (idealne 0mm)
+        - Godziny słoneczne (optymalne 8h)
+        - Zachmurzenie (idealne 0-20%)
+        
+        Args:
+            optimal_temp_range: Krotka (min, max) z optymalnym zakresem temperatur.
+            max_comfort_precipitation: Maksymalna ilość opadów dla pełnego komfortu.
+            optimal_sunshine: Optymalna liczba godzin słonecznych.
+            max_comfort_cloud_cover: Maksymalne zachmurzenie dla pełnego komfortu.
+            
+        Returns:
+            Indeks komfortu w skali 0-100.
+        """
+        # Wagi dla poszczególnych czynników (suma = 100)
+        weights = {
+            'temperature': 40,
+            'precipitation': 30,
+            'sunshine': 20,
+            'cloud_cover': 10
+        }
+        
+        # Ocena temperatury (0-100)
+        temp_score = 0
+        min_optimal, max_optimal = optimal_temp_range
+        
+        if min_optimal <= self.avg_temp <= max_optimal:
+            # Idealna temperatura
+            temp_score = 100
+        else:
+            # Im dalej od optymalnego zakresu, tym niższa ocena
+            temp_diff = min(abs(self.avg_temp - min_optimal), abs(self.avg_temp - max_optimal))
+            # Spadek o 5 punktów na każdy stopień różnicy
+            temp_score = max(0, 100 - (temp_diff * 5))
+        
+        # Ocena opadów (0-100)
+        precip_score = 0
+        if self.precipitation <= max_comfort_precipitation:
+            # Brak opadów = idealnie
+            precip_score = 100
+        else:
+            # Spadek o 10 punktów na każdy mm opadu powyżej limitu
+            precip_score = max(0, 100 - ((self.precipitation - max_comfort_precipitation) * 10))
+        
+        # Ocena godzin słonecznych (0-100)
+        sunshine_score = 0
+        if self.sunshine_hours >= optimal_sunshine:
+            # Idealna liczba godzin słonecznych lub więcej
+            sunshine_score = 100
+        else:
+            # Liniowy spadek dla mniejszej liczby godzin
+            sunshine_score = (self.sunshine_hours / optimal_sunshine) * 100
+        
+        # Ocena zachmurzenia (0-100)
+        cloud_score = 0
+        if self.cloud_cover <= max_comfort_cloud_cover:
+            # Idealne zachmurzenie
+            cloud_score = 100
+        else:
+            # Liniowy spadek dla większego zachmurzenia
+            cloud_score = max(0, 100 - (self.cloud_cover - max_comfort_cloud_cover) * (100 / (100 - max_comfort_cloud_cover)))
+        
+        # Obliczenie ważonego indeksu komfortu
+        comfort_index = (
+            (temp_score * weights['temperature'] / 100) +
+            (precip_score * weights['precipitation'] / 100) +
+            (sunshine_score * weights['sunshine'] / 100) +
+            (cloud_score * weights['cloud_cover'] / 100)
+        )
+        
+        return comfort_index
 
 
 class WeatherData:
@@ -245,41 +351,169 @@ class WeatherData:
         logger.debug(f"Suma opadów: {total_precip:.2f} mm")
         return total_precip
     
-    def count_sunny_days(self, min_sunshine_hours: float = 5.0) -> int:
+    def count_sunny_days(self, location_id: Optional[str] = None, 
+                        start_date: Optional[date] = None, 
+                        end_date: Optional[date] = None,
+                        min_sunshine_hours: float = 5.0,
+                        max_cloud_cover: int = 30) -> int:
         """
-        Oblicza liczbę dni słonecznych dla przefiltrowanych danych.
+        Liczy słoneczne dni dla danej lokalizacji i zakresu dat.
         
         Args:
-            min_sunshine_hours: Minimalna liczba godzin słonecznych uznawana za dzień słoneczny.
+            location_id: Identyfikator lokalizacji (opcjonalny).
+            start_date: Data początkowa zakresu (opcjonalna).
+            end_date: Data końcowa zakresu (opcjonalna).
+            min_sunshine_hours: Minimalna liczba godzin słonecznych dla słonecznego dnia.
+            max_cloud_cover: Maksymalne zachmurzenie (%) dla słonecznego dnia.
             
         Returns:
-            Liczba dni słonecznych.
+            Liczba słonecznych dni.
         """
-        logger.debug(f"Obliczanie liczby dni słonecznych (min. {min_sunshine_hours} godzin)")
-        if not self.filtered_records:
-            logger.warn("Brak danych pogodowych do obliczenia liczby dni słonecznych")
-            return 0
+        # Filtrowanie rekordów według lokalizacji i zakresu dat
+        filtered = self.records
         
-        sunny_days = len(list(filter(
-            lambda record: record.sunshine_hours >= min_sunshine_hours,
-            self.filtered_records
-        )))
-        logger.debug(f"Liczba dni słonecznych: {sunny_days}")
+        if location_id:
+            filtered = [r for r in filtered if r.location_id == location_id]
+        
+        if start_date:
+            filtered = [r for r in filtered if r.date >= start_date]
+        
+        if end_date:
+            filtered = [r for r in filtered if r.date <= end_date]
+        
+        # Zliczanie słonecznych dni
+        sunny_days = sum(1 for r in filtered if r.is_sunny_day(min_sunshine_hours, max_cloud_cover))
+        
         return sunny_days
+    
+    def count_rainy_days(self, location_id: Optional[str] = None, 
+                        start_date: Optional[date] = None, 
+                        end_date: Optional[date] = None,
+                        min_precipitation: float = 1.0) -> int:
+        """
+        Liczy deszczowe dni dla danej lokalizacji i zakresu dat.
+        
+        Args:
+            location_id: Identyfikator lokalizacji (opcjonalny).
+            start_date: Data początkowa zakresu (opcjonalna).
+            end_date: Data końcowa zakresu (opcjonalna).
+            min_precipitation: Minimalna ilość opadów (mm) dla deszczowego dnia.
+            
+        Returns:
+            Liczba deszczowych dni.
+        """
+        # Filtrowanie rekordów według lokalizacji i zakresu dat
+        filtered = self.records
+        
+        if location_id:
+            filtered = [r for r in filtered if r.location_id == location_id]
+        
+        if start_date:
+            filtered = [r for r in filtered if r.date >= start_date]
+        
+        if end_date:
+            filtered = [r for r in filtered if r.date <= end_date]
+        
+        # Zliczanie deszczowych dni
+        rainy_days = sum(1 for r in filtered if r.is_rainy_day(min_precipitation))
+        
+        return rainy_days
+    
+    def calculate_avg_comfort_index(self, location_id: Optional[str] = None, 
+                                  start_date: Optional[date] = None, 
+                                  end_date: Optional[date] = None) -> float:
+        """
+        Oblicza średni indeks komfortu dla danej lokalizacji i zakresu dat.
+        
+        Args:
+            location_id: Identyfikator lokalizacji (opcjonalny).
+            start_date: Data początkowa zakresu (opcjonalna).
+            end_date: Data końcowa zakresu (opcjonalna).
+            
+        Returns:
+            Średni indeks komfortu w skali 0-100.
+        """
+        # Filtrowanie rekordów według lokalizacji i zakresu dat
+        filtered = self.records
+        
+        if location_id:
+            filtered = [r for r in filtered if r.location_id == location_id]
+        
+        if start_date:
+            filtered = [r for r in filtered if r.date >= start_date]
+        
+        if end_date:
+            filtered = [r for r in filtered if r.date <= end_date]
+        
+        if not filtered:
+            return 0.0
+        
+        # Obliczanie średniego indeksu komfortu
+        total_comfort = sum(r.calculate_comfort_index() for r in filtered)
+        avg_comfort = total_comfort / len(filtered)
+        
+        return avg_comfort
+    
+    def find_best_weather_periods(self, location_id: str, 
+                                period_length: int = 7,
+                                min_comfort_index: float = 70) -> List[Tuple[date, float]]:
+        """
+        Znajduje najlepsze okresy pogodowe dla danej lokalizacji.
+        
+        Args:
+            location_id: Identyfikator lokalizacji.
+            period_length: Długość okresu w dniach.
+            min_comfort_index: Minimalny akceptowalny indeks komfortu.
+            
+        Returns:
+            Lista krotek (data_początkowa, średni_indeks_komfortu) dla najlepszych okresów.
+        """
+        # Filtrowanie rekordów według lokalizacji
+        location_records = [r for r in self.records if r.location_id == location_id]
+        
+        # Sortowanie według daty
+        location_records.sort(key=lambda r: r.date)
+        
+        if len(location_records) < period_length:
+            return []
+        
+        # Znajdowanie najlepszych okresów
+        best_periods = []
+        
+        for i in range(len(location_records) - period_length + 1):
+            period_records = location_records[i:i+period_length]
+            
+            # Sprawdzenie ciągłości dat
+            dates = [r.date for r in period_records]
+            is_continuous = all((dates[j+1] - dates[j]).days == 1 for j in range(len(dates)-1))
+            
+            if not is_continuous:
+                continue
+            
+            # Obliczanie średniego indeksu komfortu dla okresu
+            avg_comfort = sum(r.calculate_comfort_index() for r in period_records) / period_length
+            
+            if avg_comfort >= min_comfort_index:
+                best_periods.append((period_records[0].date, avg_comfort))
+        
+        # Sortowanie okresów według indeksu komfortu (malejąco)
+        best_periods.sort(key=lambda x: x[1], reverse=True)
+        
+        return best_periods
     
     def calculate_statistics(self, location_id: Optional[str] = None, 
                            start_date: Optional[date] = None, 
                            end_date: Optional[date] = None) -> Dict[str, float]:
         """
-        Oblicza statystyki dla danych pogodowych, opcjonalnie ograniczonych do lokalizacji i zakresu dat.
+        Oblicza statystyki pogodowe dla danej lokalizacji i zakresu dat.
         
         Args:
-            location_id: Opcjonalny identyfikator lokalizacji.
-            start_date: Opcjonalna data początkowa.
-            end_date: Opcjonalna data końcowa.
+            location_id: Identyfikator lokalizacji (opcjonalny).
+            start_date: Data początkowa zakresu (opcjonalna).
+            end_date: Data końcowa zakresu (opcjonalna).
             
         Returns:
-            Słownik ze statystykami: średnia temperatura, suma opadów, liczba dni słonecznych.
+            Słownik ze statystykami pogodowymi.
         """
         logger.info(f"Obliczanie statystyk pogodowych dla lokalizacji: {location_id}, zakres dat: {start_date} - {end_date}")
         # Resetowanie filtrów
@@ -297,7 +531,9 @@ class WeatherData:
         stats = {
             'avg_temperature': self.calculate_avg_temperature(),
             'total_precipitation': self.calculate_total_precipitation(),
-            'sunny_days_count': self.count_sunny_days()
+            'sunny_days_count': self.count_sunny_days(location_id, start_date, end_date),
+            'rainy_days_count': self.count_rainy_days(location_id, start_date, end_date),
+            'avg_comfort_index': self.calculate_avg_comfort_index(location_id, start_date, end_date)
         }
         
         logger.info(f"Obliczone statystyki: {stats}")

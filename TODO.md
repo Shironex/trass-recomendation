@@ -1,57 +1,61 @@
-# Plan implementacji Rekomendatora tras turystycznych
+# Lista zadań - Rozbudowa projektu: Rekomendator tras turystycznych
 
-## 1. Struktura projektu
-- [x] Utworzenie podstawowej struktury katalogów:
-  - `data/` - katalog na pliki z danymi
-  - `src/` - katalog na kod źródłowy
-  - `tests/` - katalog na testy
-  - `docs/` - katalog na dokumentację używając vitepress
-- [x] Utworzenie pliku `requirements.txt` z zależnościami
+## Rozwój struktury OOP
+1. ✅ Klasa `TrailRecord` z podstawowymi polami
+2. ✅ Klasa `TrailData` do obsługi danych o trasach
+3. ✅ Klasa `WeatherRecord` z podstawowymi polami
+4. ✅ Klasa `WeatherData` do obsługi danych pogodowych
+5. ✅ Klasa `RouteRecommender` do generowania rekomendacji
 
-## 2. Implementacja modułów (Etap 1)
+## Do zaimplementowania:
 
-### 2.1 Moduł obsługi danych o trasach (`src/trail_data.py`)
-- [x] Implementacja klasy `TrailData`
-- [x] Funkcje do wczytywania danych z plików CSV/JSON
-- [x] Implementacja funkcji filtrowania tras:
-  - [x] Po długości
-  - [x] Po trudności
-  - [x] Po regionie
-- [x] Implementacja funkcji do zapisywania przetworzonych danych
+### 1. Nowe klasy i metody
+- ✅ Klasa `UserPreference` 
+  - ✅ Pola: preferowana temperatura, dopuszczalne opady, max trudność, max długość trasy
+  - ✅ Metody: obliczanie zgodności z trasą i pogodą, aktualizacja preferencji
 
-### 2.2 Moduł obsługi danych pogodowych (`src/weather_data.py`)
-- [x] Implementacja klasy `WeatherData`
-- [x] Funkcje do wczytywania danych pogodowych z plików CSV/JSON
-- [x] Implementacja funkcji obliczających statystyki:
-  - [x] Średnia temperatura
-  - [x] Suma opadów
-  - [x] Liczba dni słonecznych
-- [x] Implementacja funkcji do zapisywania przetworzonych danych
+### 2. Rozszerzenie istniejących klas
+- ✅ Klasa `TrailRecord`
+  - ✅ Metoda `calculate_center_point()` - obliczanie środka trasy
+  - ✅ Metoda `estimate_completion_time()` - szacowanie czasu przejścia trasy
+  - ✅ Metoda `check_preference_match()` - sprawdzanie dopasowania do preferencji
+  - ✅ Metoda `categorize_trail()` - kategoryzacja trasy (rodzinna, widokowa, sportowa, ekstremalna)
 
-### 2.3 Moduł przetwarzania danych (`src/data_processor.py`)
-- [x] Implementacja funkcji wykorzystujących programowanie funkcyjne:
-  - [x] Użycie `map()` do transformacji danych
-  - [x] Użycie `filter()` do filtrowania danych
-  - [x] Użycie `reduce()` do agregacji danych
-- [x] Implementacja wyrażeń listowych i słownikowych
-- [x] Implementacja funkcji lambda do operacji na danych
+- ✅ Klasa `WeatherData`/`WeatherRecord`
+  - ✅ Metoda `is_sunny_day()` - sprawdzanie czy dzień jest słoneczny
+  - ✅ Metoda `is_rainy_day()` - sprawdzanie czy dzień jest deszczowy
+  - ✅ Metoda `calculate_comfort_index()` - obliczanie indeksu komfortu (0-100)
 
-### 2.4 Moduł interfejsu użytkownika (`src/ui.py`)
-- [x] Implementacja prostego interfejsu desktopowego
-- [x] Funkcje do wyświetlania menu
-- [ ] Funkcje do pobierania danych od użytkownika
+- ✅ Klasa `RouteRecommender`
+  - ✅ Obsługa wag preferencji (pogoda/trudność/długość) - mechanizm personalizacji rekomendacji
+  - ✅ Integracja z kategoryzacją tras
+  - ✅ Integracja z indeksem komfortu
+  - ✅ Uwzględnienie szacowanego czasu przejścia w rekomendacjach
 
-## 3. Testy
-- [x] Utworzenie testów jednostkowych dla każdego modułu
-- [x] Implementacja testów integracyjnych
-- [x] Utworzenie przykładowych danych testowych
+### 3. Nowe funkcjonalności
+- ✅ Obliczanie komfortu wędrówki (indeks 0-100)
+  - ✅ Algorytm bazujący na temperaturze, opadach i zachmurzeniu
+  - ✅ Uwzględnienie indeksu w rekomendacjach
 
-## 4. Dokumentacja
-- [x] Dokumentacja kodu (docstringi)
-- [x] Instrukcja instalacji i uruchomienia
-- [x] Dokumentacja vitepress
+- ✅ Kategoryzacja tras
+  - ✅ Automatyczna kategoryzacja: rodzinne, widokowe, sportowe, ekstremalne
+  - ✅ Bazowanie na trudności, długości, przewyższeniu i tagach
 
-## 5. Dane przykładowe
-- [x] Przygotowanie przykładowych plików CSV z danymi o trasach
-- [x] Przygotowanie przykładowych plików CSV z danymi pogodowymi
-- [x] Utworzenie dokumentacji formatu danych
+- ✅ Personalizowane rekomendacje
+  - ✅ Mechanizm wag dla czynników (pogoda, trudność, etc.)
+  - ✅ Możliwość określania wag przez użytkownika
+
+- ✅ Szacowanie czasu przejścia
+  - ✅ Algorytm uwzględniający długość, przewyższenie, trudność i typ terenu
+
+- ✅ Statystyki pogodowe dla tras
+  - ✅ Obliczanie statystyk dla każdej trasy (średnia temp, liczba dni deszczowych, słonecznych)
+  - ✅ Określanie najlepszych okresów w roku dla danej trasy
+
+### 4. Interfejs użytkownika
+- ✅ Rozszerzenie UI o nowe funkcjonalności:
+  - ✅ Wyświetlanie indeksu komfortu dla rekomendacji
+  - ✅ Wyświetlanie kategorii tras
+  - ✅ Możliwość ustawiania wag preferencji
+  - ✅ Wyświetlanie szacowanego czasu przejścia
+  - ✅ Wyświetlanie statystyk pogodowych

@@ -1,0 +1,99 @@
+{
+  "recommendations": [
+    {
+      "name": "Szlak na Tarnicę",
+      "region": "Bieszczady",
+      "length_km": 8.5,
+      "difficulty": 3,
+      "elevation_gain": 700.0,
+      "terrain_type": "górski",
+      "tags": [
+        "widokowy",
+        "popularny"
+      ],
+      "categories": [
+        "Sportowa"
+      ],
+      "estimated_time": "4h 22min",
+      "weather_comfort_index": 84.8,
+      "preference_match_score": 70.2,
+      "total_score": 76.0
+    },
+    {
+      "name": "Szlak Jaskiń Jury",
+      "region": "Jura Krakowsko-Częstochowska",
+      "length_km": 45.0,
+      "difficulty": 3,
+      "elevation_gain": 800.0,
+      "terrain_type": "skalny",
+      "tags": [
+        "jaskinie",
+        "przyrodniczy"
+      ],
+      "categories": [
+        "Sportowa"
+      ],
+      "estimated_time": "19h 7min",
+      "weather_comfort_index": 87.8,
+      "preference_match_score": 64.4,
+      "total_score": 73.8
+    },
+    {
+      "name": "Szlak Doliny Sanu",
+      "region": "Bieszczady",
+      "length_km": 45.0,
+      "difficulty": 2,
+      "elevation_gain": 300.0,
+      "terrain_type": "rzeczny",
+      "tags": [
+        "wodny",
+        "przyrodniczy"
+      ],
+      "categories": [
+        "Sportowa"
+      ],
+      "estimated_time": "15h 47min",
+      "weather_comfort_index": 84.8,
+      "preference_match_score": 53.3,
+      "total_score": 65.9
+    },
+    {
+      "name": "Ścieżka wokół jeziora Solińskiego",
+      "region": "Bieszczady",
+      "length_km": 15.5,
+      "difficulty": 1,
+      "elevation_gain": 150.0,
+      "terrain_type": "mieszany",
+      "tags": [
+        "wodny",
+        "rekreacyjny"
+      ],
+      "categories": [
+        "Sportowa"
+      ],
+      "estimated_time": "4h 34min",
+      "weather_comfort_index": 84.8,
+      "preference_match_score": 52.3,
+      "total_score": 65.3
+    },
+    {
+      "name": "Droga na Rawkę",
+      "region": "Bieszczady",
+      "length_km": 7.2,
+      "difficulty": 4,
+      "elevation_gain": 680.0,
+      "terrain_type": "górski",
+      "tags": [
+        "szczyt",
+        "widokowy"
+      ],
+      "categories": [
+        "Sportowa"
+      ],
+      "estimated_time": "4h 22min",
+      "weather_comfort_index": 84.8,
+      "preference_match_score": 52.0,
+      "total_score": 65.1
+    }
+  ]
+}

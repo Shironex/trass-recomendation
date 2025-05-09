@@ -32,6 +32,8 @@ class MainMenu(QMenuBar):
     export_trails_json_signal = pyqtSignal()
     export_weather_csv_signal = pyqtSignal()
     export_weather_json_signal = pyqtSignal()
+    export_recommendations_csv_signal = pyqtSignal()
+    export_recommendations_json_signal = pyqtSignal()
     
     def __init__(self, parent=None):
         """
@@ -83,6 +85,13 @@ class MainMenu(QMenuBar):
         export_weather_csv.triggered.connect(self.export_weather_csv_signal.emit)
         export_weather_json = export_weather_menu.addAction("Do pliku JSON")
         export_weather_json.triggered.connect(self.export_weather_json_signal.emit)
+        
+        # Opcje eksportowania rekomendacji
+        export_recommendations_menu = export_menu.addMenu("Rekomendacje")
+        export_recommendations_csv = export_recommendations_menu.addAction("Do pliku CSV")
+        export_recommendations_csv.triggered.connect(self.export_recommendations_csv_signal.emit)
+        export_recommendations_json = export_recommendations_menu.addAction("Do pliku JSON")
+        export_recommendations_json.triggered.connect(self.export_recommendations_json_signal.emit)
         
         file_menu.addSeparator()
         
